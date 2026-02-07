@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Color Roles Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #2f3136;
+            color: white;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #ffffff; text-align: center; margin-bottom: 30px; }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .color-group {
+            background: #36393f;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #7289da;
+        }
+        .color-group h3 {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            font-size: 16px;
+        }
+        .color-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 8px 0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #b9bbbe;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Available Color Roles</h1>
+
+    <div class="color-grid">
+        <div class="color-group">
+            <h3>🔴 Red Tones</h3>
+            <div class="color-name" style="color: rgb(255, 0, 0);">Red</div>
+            <div class="color-name" style="color: rgb(220, 20, 60);">Crimson</div>
+            <div class="color-name" style="color: rgb(255, 0, 127);">Rose</div>
+            <div class="color-name" style="color: rgb(128, 0, 0);">Maroon</div>
+            <div class="color-name" style="color: rgb(255, 69, 0);">Scarlet</div>
+            <div class="color-name" style="color: rgb(178, 34, 34);">Brick</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🟣 Purple Tones</h3>
+            <div class="color-name" style="color: rgb(128, 0, 128);">Purple</div>
+            <div class="color-name" style="color: rgb(153, 102, 204);">Amethyst</div>
+            <div class="color-name" style="color: rgb(230, 190, 255);">Lavender</div>
+            <div class="color-name" style="color: rgb(138, 43, 226);">Violet</div>
+            <div class="color-name" style="color: rgb(255, 0, 255);">Magenta</div>
+            <div class="color-name" style="color: rgb(147, 112, 219);">Plum</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🔵 Blue Tones</h3>
+            <div class="color-name" style="color: rgb(0, 0, 255);">Blue</div>
+            <div class="color-name" style="color: rgb(15, 82, 186);">Sapphire</div>
+            <div class="color-name" style="color: rgb(135, 206, 235);">Sky</div>
+            <div class="color-name" style="color: rgb(0, 119, 190);">Ocean</div>
+            <div class="color-name" style="color: rgb(0, 0, 128);">Navy</div>
+            <div class="color-name" style="color: rgb(0, 255, 255);">Cyan</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🟢 Green Tones</h3>
+            <div class="color-name" style="color: rgb(0, 128, 0);">Green</div>
+            <div class="color-name" style="color: rgb(80, 200, 120);">Emerald</div>
+            <div class="color-name" style="color: rgb(152, 255, 152);">Mint</div>
+            <div class="color-name" style="color: rgb(50, 205, 50);">Lime</div>
+            <div class="color-name" style="color: rgb(34, 139, 34);">Forest</div>
+            <div class="color-name" style="color: rgb(0, 128, 128);">Teal</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🟡 Warm Tones</h3>
+            <div class="color-name" style="color: rgb(255, 255, 0);">Yellow</div>
+            <div class="color-name" style="color: rgb(255, 165, 0);">Orange</div>
+            <div class="color-name" style="color: rgb(255, 215, 0);">Gold</div>
+            <div class="color-name" style="color: rgb(255, 99, 71);">Sunset</div>
+            <div class="color-name" style="color: rgb(255, 127, 80);">Coral</div>
+            <div class="color-name" style="color: rgb(255, 140, 0);">Tangerine</div>
+        </div>
+
+        <div class="color-group">
+            <h3>⚫ Neutral Tones</h3>
+            <div class="color-name" style="color: rgb(0, 0, 0); background: rgba(255,255,255,0.2);">Black</div>
+            <div class="color-name" style="color: rgb(255, 255, 255);">White</div>
+            <div class="color-name" style="color: rgb(128, 128, 128);">Gray</div>
+            <div class="color-name" style="color: rgb(192, 192, 192);">Silver</div>
+            <div class="color-name" style="color: rgb(240, 234, 214);">Pearl</div>
+            <div class="color-name" style="color: rgb(245, 245, 220);">Cream</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🌈 Special Tones</h3>
+            <div class="color-name" style="color: rgb(255, 105, 180);">Pink</div>
+            <div class="color-name" style="color: rgb(64, 224, 208);">Turquoise</div>
+            <div class="color-name" style="color: rgb(255, 20, 147);">Fuchsia</div>
+            <div class="color-name" style="color: rgb(218, 112, 214);">Orchid</div>
+            <div class="color-name" style="color: rgb(255, 182, 193);">Blush</div>
+            <div class="color-name" style="color: rgb(75, 0, 130);">Indigo</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🌸 Pastel Tones</h3>
+            <div class="color-name" style="color: rgb(255, 218, 185);">Peach</div>
+            <div class="color-name" style="color: rgb(221, 160, 221);">Lilac</div>
+            <div class="color-name" style="color: rgb(173, 216, 230);">Powder</div>
+            <div class="color-name" style="color: rgb(255, 239, 213);">Vanilla</div>
+            <div class="color-name" style="color: rgb(250, 240, 230);">Linen</div>
+            <div class="color-name" style="color: rgb(255, 191, 0);">Amber</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🔥 Vibrant Tones</h3>
+            <div class="color-name" style="color: rgb(255, 0, 0);">Fire</div>
+            <div class="color-name" style="color: rgb(0, 255, 0);">Neon</div>
+            <div class="color-name" style="color: rgb(255, 255, 0);">Electric</div>
+            <div class="color-name" style="color: rgb(255, 0, 255);">Plasma</div>
+            <div class="color-name" style="color: rgb(0, 255, 255);">Laser</div>
+            <div class="color-name" style="color: rgb(30, 144, 255);">Azure</div>
+        </div>
+
+        <div class="color-group">
+            <h3>🍂 Earth Tones</h3>
+            <div class="color-name" style="color: rgb(139, 69, 19);">Coffee</div>
+            <div class="color-name" style="color: rgb(160, 82, 45);">Copper</div>
+            <div class="color-name" style="color: rgb(210, 180, 140);">Sand</div>
+            <div class="color-name" style="color: rgb(205, 133, 63);">Bronze</div>
+            <div class="color-name" style="color: rgb(152, 140, 126);">Taupe</div>
+            <div class="color-name" style="color: rgb(128, 128, 0);">Olive</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Use the color role buttons to get these colors!
+    </div>
+</body>
+</html>

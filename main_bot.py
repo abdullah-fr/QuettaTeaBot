@@ -16,41 +16,97 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Store sticky message ID
 sticky_message_id = None
 
-# ---------- COLOR ROLES ----------
+# ---------- ALL 60 COLOR ROLES ----------
 COLOR_ROLES = {
+    # Red Tones
+    "Red": discord.Color.from_rgb(255, 0, 0),
     "Crimson": discord.Color.from_rgb(220, 20, 60),
-    "Amethyst": discord.Color.from_rgb(153, 102, 204),
-    "Sapphire": discord.Color.from_rgb(15, 82, 186),
-    "Emerald": discord.Color.from_rgb(80, 200, 120),
-    "Amber": discord.Color.from_rgb(255, 191, 0),
-    "Sky": discord.Color.from_rgb(135, 206, 235),
-    "Sunset": discord.Color.from_rgb(255, 99, 71),
-    "Pearl": discord.Color.from_rgb(240, 234, 214),
-    "Onyx": discord.Color.from_rgb(53, 56, 57),
-    "Pink": discord.Color.from_rgb(255, 105, 180),
-    "Lavender": discord.Color.from_rgb(230, 190, 255),
-    "Mint": discord.Color.from_rgb(152, 255, 152),
     "Rose": discord.Color.from_rgb(255, 0, 127),
-    "Ocean": discord.Color.from_rgb(0, 119, 190),
-    "Gold": discord.Color.from_rgb(255, 215, 0),
-    "Silver": discord.Color.from_rgb(192, 192, 192),
-    "Coral": discord.Color.from_rgb(255, 127, 80),
-    "Turquoise": discord.Color.from_rgb(64, 224, 208),
-    "Violet": discord.Color.from_rgb(138, 43, 226),
-    "Lime": discord.Color.from_rgb(50, 205, 50),
-    "Magenta": discord.Color.from_rgb(255, 0, 255),
-    "Cyan": discord.Color.from_rgb(0, 255, 255),
     "Maroon": discord.Color.from_rgb(128, 0, 0),
+    "Scarlet": discord.Color.from_rgb(255, 69, 0),
+    "Brick": discord.Color.from_rgb(178, 34, 34),
+
+    # Purple Tones
+    "Purple": discord.Color.from_rgb(128, 0, 128),
+    "Amethyst": discord.Color.from_rgb(153, 102, 204),
+    "Lavender": discord.Color.from_rgb(230, 190, 255),
+    "Violet": discord.Color.from_rgb(138, 43, 226),
+    "Magenta": discord.Color.from_rgb(255, 0, 255),
+    "Plum": discord.Color.from_rgb(147, 112, 219),
+
+    # Blue Tones
+    "Blue": discord.Color.from_rgb(0, 0, 255),
+    "Sapphire": discord.Color.from_rgb(15, 82, 186),
+    "Sky": discord.Color.from_rgb(135, 206, 235),
+    "Ocean": discord.Color.from_rgb(0, 119, 190),
     "Navy": discord.Color.from_rgb(0, 0, 128),
+    "Cyan": discord.Color.from_rgb(0, 255, 255),
+
+    # Green Tones
+    "Green": discord.Color.from_rgb(0, 128, 0),
+    "Emerald": discord.Color.from_rgb(80, 200, 120),
+    "Mint": discord.Color.from_rgb(152, 255, 152),
+    "Lime": discord.Color.from_rgb(50, 205, 50),
+    "Forest": discord.Color.from_rgb(34, 139, 34),
+    "Teal": discord.Color.from_rgb(0, 128, 128),
+
+    # Warm Tones
+    "Yellow": discord.Color.from_rgb(255, 255, 0),
+    "Orange": discord.Color.from_rgb(255, 165, 0),
+    "Gold": discord.Color.from_rgb(255, 215, 0),
+    "Sunset": discord.Color.from_rgb(255, 99, 71),
+    "Coral": discord.Color.from_rgb(255, 127, 80),
+    "Tangerine": discord.Color.from_rgb(255, 140, 0),
+
+    # Neutral Tones
+    "Black": discord.Color.from_rgb(0, 0, 0),
+    "White": discord.Color.from_rgb(255, 255, 255),
+    "Gray": discord.Color.from_rgb(128, 128, 128),
+    "Silver": discord.Color.from_rgb(192, 192, 192),
+    "Pearl": discord.Color.from_rgb(240, 234, 214),
+    "Cream": discord.Color.from_rgb(245, 245, 220),
+
+    # Special Tones
+    "Pink": discord.Color.from_rgb(255, 105, 180),
+    "Turquoise": discord.Color.from_rgb(64, 224, 208),
+    "Fuchsia": discord.Color.from_rgb(255, 20, 147),
+    "Orchid": discord.Color.from_rgb(218, 112, 214),
+    "Blush": discord.Color.from_rgb(255, 182, 193),
+    "Indigo": discord.Color.from_rgb(75, 0, 130),
+
+    # Pastel Tones
+    "Peach": discord.Color.from_rgb(255, 218, 185),
+    "Lilac": discord.Color.from_rgb(221, 160, 221),
+    "Powder": discord.Color.from_rgb(173, 216, 230),
+    "Vanilla": discord.Color.from_rgb(255, 239, 213),
+    "Linen": discord.Color.from_rgb(250, 240, 230),
+    "Amber": discord.Color.from_rgb(255, 191, 0),
+
+    # Vibrant Tones
+    "Fire": discord.Color.from_rgb(255, 0, 0),
+    "Neon": discord.Color.from_rgb(0, 255, 0),
+    "Electric": discord.Color.from_rgb(255, 255, 0),
+    "Plasma": discord.Color.from_rgb(255, 0, 255),
+    "Laser": discord.Color.from_rgb(0, 255, 255),
+    "Azure": discord.Color.from_rgb(30, 144, 255),
+
+    # Earth Tones
+    "Coffee": discord.Color.from_rgb(139, 69, 19),
+    "Copper": discord.Color.from_rgb(160, 82, 45),
+    "Sand": discord.Color.from_rgb(210, 180, 140),
+    "Bronze": discord.Color.from_rgb(205, 133, 63),
+    "Taupe": discord.Color.from_rgb(152, 140, 126),
     "Olive": discord.Color.from_rgb(128, 128, 0),
 }
 
-# ---------- COLOR BUTTON ----------
+# ---------- COLOR ROLE BUTTONS ----------
 class ColorRoleButton(Button):
-    def __init__(self, color_name: str):
+    def __init__(self, color_name):
+        # Use gray style for all buttons since we can't set custom colors
+        button_style = discord.ButtonStyle.gray
         super().__init__(
             label=color_name,
-            style=discord.ButtonStyle.primary,
+            style=button_style,
             custom_id=f"color_role_{color_name}"
         )
         self.color_name = color_name
@@ -85,7 +141,23 @@ class ColorRoleButton(Button):
 class ColorRoleView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        for name in COLOR_ROLES.keys():
+        # Add first 25 colors (Discord's limit per view)
+        color_names = list(COLOR_ROLES.keys())
+        for name in color_names[:25]:
+            self.add_item(ColorRoleButton(name))
+
+class ColorRoleView2(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        color_names = list(COLOR_ROLES.keys())
+        for name in color_names[25:50]:
+            self.add_item(ColorRoleButton(name))
+
+class ColorRoleView3(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        color_names = list(COLOR_ROLES.keys())
+        for name in color_names[50:]:
             self.add_item(ColorRoleButton(name))
 
 # ---------- NOTIFICATION BUTTONS ----------
@@ -162,8 +234,10 @@ async def on_ready():
 
     # Register persistent views
     bot.add_view(ColorRoleView())
+    bot.add_view(ColorRoleView2())
+    bot.add_view(ColorRoleView3())
     bot.add_view(NotificationView())
-    print("✅ Registered color role buttons")
+    print("✅ Registered all color role buttons (60 colors)")
     print("✅ Registered notification buttons")
 
     # Setup sticky intro message
