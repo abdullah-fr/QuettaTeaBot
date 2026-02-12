@@ -502,14 +502,14 @@ async def on_message_riddle_answer(message):
                 del active_riddles[riddle_id]
                 break
 
-# ==================== ROAST GENERATOR (Unlimited SFW) ====================
+# ==================== ROAST GENERATOR (Friendly & Unlimited) ====================
 @bot.command()
 async def roast(ctx, member: discord.Member = None):
-    """Unlimited SFW roasts - Copy: !roast @user"""
+    """Unlimited friendly roasts - Copy: !roast @user"""
     if member is None:
         member = ctx.author
 
-    # Get roast from SFW API
+    # Get friendly roast from API with safety filter
     roast_text = await fetch_roast()
 
     # If API fails, use our safe fallback list

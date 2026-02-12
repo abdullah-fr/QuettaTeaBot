@@ -162,19 +162,45 @@ async def fetch_compliment():
 
     return None
 
-# ==================== ROAST API (SFW Only) ====================
+# ==================== ROAST API (Friendly & SFW with Safety Filter) ====================
 async def fetch_roast():
-    """Fetch unlimited SFW roasts from clean API"""
+    """Fetch unlimited friendly roasts with safety filter"""
+    # Safety filter for unexpected NSFW content
+    nsfw_words = [
+        'dick', 'cock', 'penis', 'vagina', 'pussy', 'ass', 'asshole', 'shit', 'fuck',
+        'bitch', 'bastard', 'damn', 'hell', 'sex', 'sexual', 'porn', 'nude', 'naked',
+        'whore', 'slut', 'cunt', 'piss', 'crap', 'tit', 'boob', 'breast', 'butt',
+        'stupid', 'idiot', 'moron', 'dumb', 'retard', 'loser', 'ugly', 'fat',
+        'kill', 'die', 'death', 'suicide', 'rape', 'molest'
+    ]
+
     try:
         async with aiohttp.ClientSession() as session:
-            # Use insult.mattbas.org - known for clean, Shakespearean-style insults
-            async with session.get('https://insult.mattbas.org/api/insult') as resp:
+            # Try pirate insults API - known for funny, friendly roasts
+            async with session.get('https://pirate.monkeyness.com/api/insult') as resp:
                 if resp.status == 200:
-                    roast = await resp.text()
-                    roast = roast.strip()
-                    if len(roast) > 10:
-                        return roast
+                    data = await resp.json()
+                    if 'insult' in data:
+                        roast = data['insult']
+                        # Safety check
+                        roast_lower = roast.lower()
+                        is_clean = not any(word in roast_lower for word in nsfw_words)
+                        if is_clean and len(roast) > 10:
+                            return roast
     except Exception as e:
-        print(f"Roast API error: {e}")
+        print(f"Pirate Roast API error: {e}")
+
+    # Fallback: Try compliment API but make it a playful roast
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://complimentr.com/api') as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if 'compliment' in data:
+                        # Turn compliment into playful roast
+                        compliment = data['compliment']
+                        return f"You're so {compliment.lower()}, it's almost suspicious! 🤔"
+    except Exception as e:
+        print(f"Compliment fallback error: {e}")
 
     return None
