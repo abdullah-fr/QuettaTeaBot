@@ -555,7 +555,7 @@ async def roast(ctx, member: discord.Member = None):
         description=f"{member.mention} {roast_text}",
         color=discord.Color.red()
     )
-    embed.set_footer(text="It's all in good fun! ❤️")
+    embed.set_footer(text="")
     await ctx.send(embed=embed)
 
 # ==================== QOTD (FULLY AUTOMATED - API Unlimited) ====================
