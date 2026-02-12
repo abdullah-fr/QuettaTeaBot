@@ -979,6 +979,9 @@ async def on_message(message):
     await on_message_riddle_answer(message)
 
 
+    await bot.process_commands(message)
+
+
 # ==================== PET SYSTEM ====================
 @bot.command()
 async def adopt(ctx):
