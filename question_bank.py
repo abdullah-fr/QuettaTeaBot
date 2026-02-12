@@ -121,6 +121,16 @@ ROASTS = [
     "You have the perfect face for radio.",
     "You're like a participation trophy - everyone gets one, but nobody wants it.",
     "If I had a dollar for every smart thing you say, I'd be broke.",
+    "You're like a broken pencil - pointless.",
+    "I'd roast you, but my mom said I'm not allowed to burn trash.",
+    "You're the human version of a typo.",
+    "You're like a screen door on a submarine - completely useless.",
+    "If brains were dynamite, you wouldn't have enough to blow your nose.",
+    "You're about as useful as a chocolate teapot.",
+    "You're like a white crayon - nobody knows why you exist.",
+    "You're the reason they put instructions on shampoo bottles.",
+    "You're like a slinky - not really good for anything, but you bring a smile when pushed down the stairs.",
+    "You're living proof that evolution can go in reverse.",
 ]
 
 # ==================== SONGS FOR GUESSING ====================
