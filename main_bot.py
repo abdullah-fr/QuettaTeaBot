@@ -1190,7 +1190,8 @@ async def post_channel_announcements():
     # Helper function to check if announcement already exists
     async def announcement_exists(channel, title_keyword):
         try:
-            async for pin in channel.pins():
+            pins = await channel.pins()
+            for pin in pins:
                 if pin.author == bot.user and pin.embeds:
                     if title_keyword.lower() in pin.embeds[0].title.lower():
                         return True
