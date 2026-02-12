@@ -104,18 +104,23 @@ COMPLIMENTS = [
     "You're really courageous!",
 ]
 
-# ==================== ROASTS (Friendly) ====================
+# ==================== ROASTS (Friendly & SFW) ====================
 ROASTS = [
     "You're like a software update. Whenever I see you, I think 'Not now.'",
     "I'd agree with you, but then we'd both be wrong.",
     "You bring everyone so much joy... when you leave the room.",
-    "I'm not saying you're dumb, but you have bad luck when it comes to thinking.",
-    "You're proof that evolution can go in reverse.",
-    "If I wanted to hear from you, I'd read your Discord status.",
     "You're like a cloud. When you disappear, it's a beautiful day.",
     "I'd explain it to you, but I left my crayons at home.",
-    "You're not stupid; you just have bad luck thinking.",
+    "You're not stupid; you just have bad luck when thinking.",
     "I'm jealous of people who don't know you.",
+    "You're the reason the gene pool needs a lifeguard.",
+    "If laughter is the best medicine, your face must be curing the world.",
+    "You're like Monday mornings - nobody likes you.",
+    "I'd call you a tool, but that would imply you're useful.",
+    "You're proof that even trash can be recycled.",
+    "You have the perfect face for radio.",
+    "You're like a participation trophy - everyone gets one, but nobody wants it.",
+    "If I had a dollar for every smart thing you say, I'd be broke.",
 ]
 
 # ==================== SONGS FOR GUESSING ====================
