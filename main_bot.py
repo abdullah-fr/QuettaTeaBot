@@ -978,12 +978,6 @@ async def on_message(message):
     # Check riddle answers
     await on_message_riddle_answer(message)
 
-    # Auto-react in specific channels
-    if message.channel.name == "art-showcase":
-        await message.add_reaction("👍")
-        await message.add_reaction("👎")
-
-    await bot.process_commands(message)
 
 # ==================== PET SYSTEM ====================
 @bot.command()
