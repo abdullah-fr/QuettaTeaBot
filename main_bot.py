@@ -1130,20 +1130,30 @@ async def on_ready():
     print("   - Daily Compliment (unlimited)")
     print("   - Auto Conversation Starter (when chat dead)")
 
-    # Post announcements in channels (only on first start)
-    if not hasattr(bot, '_announcements_posted'):
-        await post_channel_announcements()
-        bot._announcements_posted = True
+    # Post announcements in channels (checks if already posted)
+    await post_channel_announcements()
 
 async def post_channel_announcements():
-    """Post pinned announcements in each channel about new features"""
+    """Post pinned announcements in each channel about new features (only once)"""
     guild = bot.guilds[0]
+
+    # Helper function to check if announcement already exists
+    async def announcement_exists(channel, title_keyword):
+        try:
+            pins = await channel.pins()
+            for pin in pins:
+                if pin.author == bot.user and pin.embeds:
+                    if title_keyword.lower() in pin.embeds[0].title.lower():
+                        return True
+        except:
+            pass
+        return False
 
     # Daily-fun channel - REMOVED announcement as requested
 
     # Music channel
     music = discord.utils.get(guild.text_channels, name="music")
-    if music:
+    if music and not await announcement_exists(music, "New Features"):
         embed = discord.Embed(
             title="🎵 New Features!",
             description="New music game added!",
@@ -1162,7 +1172,7 @@ async def post_channel_announcements():
 
     # Extras channel
     extras = discord.utils.get(guild.text_channels, name="extras")
-    if extras:
+    if extras and not await announcement_exists(extras, "New Features"):
         embed = discord.Embed(
             title="✨ New Features!",
             description="Tons of new commands and features!",
@@ -1196,7 +1206,7 @@ async def post_channel_announcements():
 
     # General channel
     general = discord.utils.get(guild.text_channels, name="general")
-    if general:
+    if general and not await announcement_exists(general, "Automated Features"):
         embed = discord.Embed(
             title="🎉 New Automated Features!",
             description="This channel now has smart automated engagement!",
@@ -1230,7 +1240,7 @@ async def post_channel_announcements():
 
     # Rekhta channel
     rekhta = discord.utils.get(guild.text_channels, name="rekhta")
-    if rekhta:
+    if rekhta and not await announcement_exists(rekhta, "New Feature"):
         embed = discord.Embed(
             title="📜 New Feature!",
             description="Urdu poetry generator added!",
