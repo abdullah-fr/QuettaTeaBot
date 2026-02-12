@@ -198,6 +198,18 @@ async def daily_trivia():
         await asyncio.sleep(120)
         await reveal_trivia_answer(msg.id)
 
+# Wait 24 hours before first run
+@daily_trivia.before_loop
+async def before_daily_trivia():
+    await bot.wait_until_ready()
+    # Calculate time until next 9 AM
+    now = datetime.now()
+    next_run = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    if now.hour >= 9:
+        next_run += timedelta(days=1)
+    wait_seconds = (next_run - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
+
 @bot.command()
 async def trivia(ctx):
     """Unlimited trivia from API"""
@@ -329,6 +341,17 @@ async def daily_wyr():
         await msg.add_reaction("1️⃣")
         await msg.add_reaction("2️⃣")
 
+# Wait before first run
+@daily_wyr.before_loop
+async def before_daily_wyr():
+    await bot.wait_until_ready()
+    now = datetime.now()
+    next_run = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    if now.hour >= 10:
+        next_run += timedelta(days=1)
+    wait_seconds = (next_run - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
+
 @bot.command()
 async def wyr(ctx):
     """Unlimited Would You Rather from API"""
@@ -410,6 +433,17 @@ async def daily_riddle():
         # Wait 5 minutes then reveal if not solved
         await asyncio.sleep(300)
         await reveal_riddle_answer(msg.id)
+
+# Wait before first run
+@daily_riddle.before_loop
+async def before_daily_riddle():
+    await bot.wait_until_ready()
+    now = datetime.now()
+    next_run = now.replace(hour=11, minute=0, second=0, microsecond=0)
+    if now.hour >= 11:
+        next_run += timedelta(days=1)
+    wait_seconds = (next_run - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
 
 @bot.command()
 async def riddle(ctx):
@@ -541,6 +575,17 @@ async def daily_qotd():
         )
         await channel.send(embed=embed)
 
+# Wait before first run
+@daily_qotd.before_loop
+async def before_daily_qotd():
+    await bot.wait_until_ready()
+    now = datetime.now()
+    next_run = now.replace(hour=12, minute=0, second=0, microsecond=0)
+    if now.hour >= 12:
+        next_run += timedelta(days=1)
+    wait_seconds = (next_run - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
+
 @bot.command()
 async def qotd(ctx):
     """Manual QOTD (Unlimited via API) - Copy: !qotd"""
@@ -633,6 +678,17 @@ async def daily_compliment():
                 color=discord.Color.pink()
             )
             await channel.send(embed=embed)
+
+# Wait before first run
+@daily_compliment.before_loop
+async def before_daily_compliment():
+    await bot.wait_until_ready()
+    now = datetime.now()
+    next_run = now.replace(hour=14, minute=0, second=0, microsecond=0)
+    if now.hour >= 14:
+        next_run += timedelta(days=1)
+    wait_seconds = (next_run - now).total_seconds()
+    await asyncio.sleep(wait_seconds)
 
 @bot.command()
 async def compliment(ctx, member: discord.Member = None):

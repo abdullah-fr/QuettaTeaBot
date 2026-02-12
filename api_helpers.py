@@ -162,45 +162,31 @@ async def fetch_compliment():
 
     return None
 
-# ==================== ROAST API (Friendly & SFW with Safety Filter) ====================
+# ==================== ROAST API (Simple & Friendly) ====================
 async def fetch_roast():
-    """Fetch unlimited friendly roasts with safety filter"""
-    # Safety filter for unexpected NSFW content
-    nsfw_words = [
-        'dick', 'cock', 'penis', 'vagina', 'pussy', 'ass', 'asshole', 'shit', 'fuck',
-        'bitch', 'bastard', 'damn', 'hell', 'sex', 'sexual', 'porn', 'nude', 'naked',
-        'whore', 'slut', 'cunt', 'piss', 'crap', 'tit', 'boob', 'breast', 'butt',
-        'stupid', 'idiot', 'moron', 'dumb', 'retard', 'loser', 'ugly', 'fat',
-        'kill', 'die', 'death', 'suicide', 'rape', 'molest'
-    ]
-
+    """Fetch unlimited roasts from API with SFW filter"""
     try:
+        # Try insult API with safe mode
         async with aiohttp.ClientSession() as session:
-            # Try pirate insults API - known for funny, friendly roasts
-            async with session.get('https://pirate.monkeyness.com/api/insult') as resp:
+            async with session.get('https://evilinsult.com/generate_insult.php?lang=en&type=json') as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if 'insult' in data:
                         roast = data['insult']
-                        # Safety check
+
+                        # Filter out NSFW and complex content
+                        nsfw_words = ['fuck', 'shit', 'ass', 'bitch', 'damn', 'hell', 'crap',
+                                     'dick', 'cock', 'pussy', 'sex', 'whore', 'slut', 'bastard',
+                                     'piss', 'fag', 'retard', 'idiot', 'stupid', 'dumb', 'moron',
+                                     'arse', 'bollocks', 'bloody', 'wanker', 'tosser', 'git',
+                                     'mother', 'father', 'parent', 'strumpet', 'scalawag', 'codpiece']
+
+                        # Check if roast is clean and simple
                         roast_lower = roast.lower()
-                        is_clean = not any(word in roast_lower for word in nsfw_words)
-                        if is_clean and len(roast) > 10:
+                        if not any(word in roast_lower for word in nsfw_words) and len(roast) < 150:
                             return roast
     except Exception as e:
-        print(f"Pirate Roast API error: {e}")
+        print(f"Roast API error: {e}")
 
-    # Fallback: Try compliment API but make it a playful roast
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://complimentr.com/api') as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if 'compliment' in data:
-                        # Turn compliment into playful roast
-                        compliment = data['compliment']
-                        return f"You're so {compliment.lower()}, it's almost suspicious! 🤔"
-    except Exception as e:
-        print(f"Compliment fallback error: {e}")
-
+    # If API fails or content is filtered, return None to use fallback
     return None
