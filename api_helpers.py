@@ -162,17 +162,49 @@ async def fetch_compliment():
 
     return None
 
-# ==================== ROAST API ====================
+# ==================== ROAST API (SFW Filtered) ====================
 async def fetch_roast():
-    """Fetch unlimited roasts"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://evilinsult.com/generate_insult.php?lang=en&type=json') as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if 'insult' in data:
-                        return data['insult']
-    except Exception as e:
-        print(f"Roast API error: {e}")
+    """Fetch unlimited roasts with NSFW filter"""
+    # List of NSFW words to filter out
+    nsfw_words = [
+        'dick', 'cock', 'penis', 'vagina', 'pussy', 'ass', 'asshole', 'shit', 'fuck',
+        'bitch', 'bastard', 'damn', 'hell', 'sex', 'sexual', 'porn', 'nude', 'naked',
+        'whore', 'slut', 'cunt', 'piss', 'crap', 'tit', 'boob', 'breast', 'butt',
+        'anus', 'rape', 'molest', 'genitals', 'testicle', 'scrotum', 'erection',
+        'masturbate', 'orgasm', 'horny', 'aroused', 'kinky', 'fetish', 'dildo'
+    ]
 
+    max_attempts = 5  # Try up to 5 times to get a clean roast
+
+    for attempt in range(max_attempts):
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Try different safe roast APIs
+                apis = [
+                    'https://insult.mattbas.org/api/insult',
+                    'https://evilinsult.com/generate_insult.php?lang=en&type=json'
+                ]
+
+                for api_url in apis:
+                    try:
+                        async with session.get(api_url) as resp:
+                            if resp.status == 200:
+                                if 'mattbas' in api_url:
+                                    roast = await resp.text()
+                                else:
+                                    data = await resp.json()
+                                    roast = data.get('insult', '')
+
+                                # Check if roast contains NSFW words
+                                roast_lower = roast.lower()
+                                is_clean = not any(word in roast_lower for word in nsfw_words)
+
+                                if is_clean and len(roast) > 10:
+                                    return roast
+                    except:
+                        continue
+        except Exception as e:
+            print(f"Roast API error (attempt {attempt + 1}): {e}")
+
+    # If all attempts fail or all roasts were NSFW, return None to use fallback
     return None

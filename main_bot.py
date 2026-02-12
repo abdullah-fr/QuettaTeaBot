@@ -502,22 +502,26 @@ async def on_message_riddle_answer(message):
                 del active_riddles[riddle_id]
                 break
 
-# ==================== ROAST GENERATOR (SFW Only) ====================
+# ==================== ROAST GENERATOR (Unlimited with SFW Filter) ====================
 @bot.command()
 async def roast(ctx, member: discord.Member = None):
-    """Family-friendly roasts - Copy: !roast @user"""
+    """Unlimited roasts with SFW filter - Copy: !roast @user"""
     if member is None:
         member = ctx.author
 
-    # Only use our safe roasts, no API
-    roast_text = random.choice(ROASTS)
+    # Try to get a clean roast from API (tries 5 times with filter)
+    roast_text = await fetch_roast()
+
+    # If API fails or all roasts were NSFW, use our safe fallback list
+    if not roast_text:
+        roast_text = random.choice(ROASTS)
 
     embed = discord.Embed(
         title="🔥 Roast Battle!",
         description=f"{member.mention} {roast_text}",
         color=discord.Color.red()
     )
-    embed.set_footer(text="It's all in good fun! ❤️ (Family-friendly roasts only)")
+    embed.set_footer(text="It's all in good fun! ❤️ (SFW filtered)")
     await ctx.send(embed=embed)
 
 # ==================== QOTD (FULLY AUTOMATED - API Unlimited) ====================
