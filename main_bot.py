@@ -15,6 +15,7 @@ from api_helpers import (
     fetch_qotd, fetch_wyr, fetch_conversation_starter,
     fetch_compliment, fetch_roast
 )
+from ramadan_features import initialize_ramadan_features
 
 load_dotenv()
 
@@ -1175,6 +1176,9 @@ async def on_ready():
     if not check_dead_chat.is_running():
         check_dead_chat.start()
 
+    # Initialize Ramadan features
+    ramadan_bot, ramadan_tasks = initialize_ramadan_features(bot)
+
     print("✅ All automated tasks started!")
     print("   - Daily Trivia (unlimited)")
     print("   - Daily WYR (unlimited)")
@@ -1182,6 +1186,7 @@ async def on_ready():
     print("   - Daily QOTD (unlimited)")
     print("   - Daily Compliment (unlimited)")
     print("   - Auto Conversation Starter (when chat dead)")
+    print("   - Ramadan Features (Sehri/Iftar reminders, Daily Hadith, Daily Ayat)")
 
     # Post announcements in channels (checks if already posted)
     await post_channel_announcements()
