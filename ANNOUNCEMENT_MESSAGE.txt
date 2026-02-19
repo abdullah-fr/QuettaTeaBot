@@ -1,0 +1,13 @@
+🌙 **RAMADAN MUBARAK! NEW FEATURES ADDED** 🌙
+
+Assalamu Alaikum everyone! We're excited to announce brand new Ramadan features! The bot will now automatically remind you for Sehri (15 min before Fajr) and Iftar (at Maghrib time), plus post daily authentic Hadiths (8 PM PKT) and Quranic verses (9 AM PKT) with Arabic text, English translations, and references. Prayer times are accurate for major Pakistani cities including Islamabad, Lahore, Karachi, Faisalabad, Rawalpindi, Multan, Peshawar, and Quetta. All times are shown in 12-hour format for easy reading!
+
+**New Commands:**
+• `!ramadan-times` - Show today's Sehri & Iftar timings
+• `!ramadan-city [city]` - Change your city
+• `!hadith` - Get random Ramadan hadith
+• `!ayat` - Get random Quranic verse
+• `!iftar-countdown` - See time until Iftar
+• `!sehri-countdown` - See time until Sehri ends
+
+May Allah accept all our fasts and prayers this Ramadan! 🤲✨
