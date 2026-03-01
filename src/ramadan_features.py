@@ -33,8 +33,20 @@ PAKISTAN_CITIES = {
 }
 
 class RamadanBot:
-    def __init__(self, bot):
+    def __init__(
+        self,
+        bot,
+        http_session_factory=None,
+        now_provider=None,
+        random_provider=None,
+    ):
         self.bot = bot
+
+        # Dependency injection for testability
+        self.http_session_factory = http_session_factory or aiohttp.ClientSession
+        self.now_provider = now_provider or (lambda: datetime.now(PKT))
+        self.random_provider = random_provider or random
+
         self.current_city = RAMADAN_CONFIG["city"]
         self.prayer_times_cache = {}
         self.last_sehri_reminder = None
@@ -45,7 +57,7 @@ class RamadanBot:
         if city is None:
             city = self.current_city
 
-        today = datetime.now(PKT).strftime("%d-%m-%Y")
+        today = self.now_provider().strftime("%d-%m-%Y")
 
         # Check cache
         cache_key = f"{city}_{today}"
@@ -60,7 +72,7 @@ class RamadanBot:
                 "method": 1  # University of Islamic Sciences, Karachi
             }
 
-            async with aiohttp.ClientSession() as session:
+            async with self.http_session_factory() as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 200:
                         data = await response.json()
@@ -79,12 +91,12 @@ class RamadanBot:
         try:
             # Sunnah.com API - Random hadith from Sahih Bukhari Book on Fasting
             book_number = 30  # Book of Fasting in Sahih Bukhari
-            hadith_number = random.randint(1, 81)  # Approx 81 hadiths in fasting book
+            hadith_number = self.random_provider.randint(1, 81)  # Approx 81 hadiths in fasting book
 
             url = f"https://api.sunnah.com/v1/hadiths/bukhari/{book_number}/{hadith_number}"
             headers = {"X-API-Key": "$2y$10$lkHuLM5qLvJGKGYdFdZJeOxnKLjqGPKdJLqJqLjqGPKdJLqJqLjqGP"}
 
-            async with aiohttp.ClientSession() as session:
+            async with self.http_session_factory() as session:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
@@ -117,7 +129,7 @@ class RamadanBot:
             }
         ]
 
-        return random.choice(fallback_hadiths)
+        return self.random_provider.choice(fallback_hadiths)
 
     async def fetch_random_ayat(self):
         """Fetch random Ramadan-related Quranic verse from AlQuran.cloud API"""
@@ -136,14 +148,14 @@ class RamadanBot:
                 {"surah": 39, "ayah": 53},  # Do not despair of Allah's mercy
             ]
 
-            verse = random.choice(ramadan_verses)
+            verse = self.random_provider.choice(ramadan_verses)
 
             # Fetch Arabic
             url_arabic = f"http://api.alquran.cloud/v1/ayah/{verse['surah']}:{verse['ayah']}"
             # Fetch English
             url_english = f"http://api.alquran.cloud/v1/ayah/{verse['surah']}:{verse['ayah']}/en.sahih"
 
-            async with aiohttp.ClientSession() as session:
+            async with self.http_session_factory() as session:
                 async with session.get(url_arabic) as resp_ar:
                     async with session.get(url_english) as resp_en:
                         if resp_ar.status == 200 and resp_en.status == 200:
@@ -175,7 +187,7 @@ class RamadanBot:
             }
         ]
 
-        return random.choice(fallback_verses)
+        return self.random_provider.choice(fallback_verses)
 
     async def get_iftar_countdown(self):
         """Get countdown to Iftar time"""
@@ -183,7 +195,7 @@ class RamadanBot:
         if not timings:
             return None
 
-        now = datetime.now(PKT)
+        now = self.now_provider()
         maghrib_time = timings['Maghrib']
 
         # Parse Maghrib time
@@ -216,7 +228,7 @@ class RamadanBot:
         if not timings:
             return None
 
-        now = datetime.now(PKT)
+        now = self.now_provider()
         fajr_time = timings['Fajr']
 
         # Parse Fajr time
@@ -273,7 +285,7 @@ def setup_ramadan_commands(bot, ramadan_bot):
 
         embed = discord.Embed(
             title=f"🌙 Ramadan Timings - {ramadan_bot.current_city}",
-            description=f"Prayer times for {datetime.now(PKT).strftime('%B %d, %Y')}",
+            description=f"Prayer times for {ramadan_bot.now_provider().strftime('%B %d, %Y')}",
             color=discord.Color.green()
         )
 
@@ -442,7 +454,7 @@ def setup_ramadan_tasks(bot, ramadan_bot):
     @tasks.loop(minutes=1)
     async def check_prayer_times():
         """Check for Sehri and Iftar times every minute"""
-        now = datetime.now(PKT)
+        now = ramadan_bot.now_provider()
         current_time = now.strftime("%H:%M")
         current_date = now.strftime("%Y-%m-%d")
 
@@ -552,7 +564,7 @@ def setup_ramadan_tasks(bot, ramadan_bot):
     @daily_hadith.before_loop
     async def before_daily_hadith():
         await bot.wait_until_ready()
-        now = datetime.now(PKT)
+        now = ramadan_bot.now_provider()
         next_run = now.replace(
             hour=RAMADAN_CONFIG['hadith_time']['hour'],
             minute=RAMADAN_CONFIG['hadith_time']['minute'],
@@ -599,7 +611,7 @@ def setup_ramadan_tasks(bot, ramadan_bot):
     @daily_ayat.before_loop
     async def before_daily_ayat():
         await bot.wait_until_ready()
-        now = datetime.now(PKT)
+        now = ramadan_bot.now_provider()
         next_run = now.replace(
             hour=RAMADAN_CONFIG['ayat_time']['hour'],
             minute=RAMADAN_CONFIG['ayat_time']['minute'],
