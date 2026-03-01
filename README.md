@@ -39,13 +39,14 @@ A comprehensive Discord bot with 25+ features including games, automation, role 
 - **Notification Toggle** - Users can opt in/out of notifications
 - **Auto-assign Unverified** - New members get unverified role
 
-### 🕌 Ramadan Features
+### 🕌 Ramadan Features (Fully Testable Architecture ✨)
 - **Prayer Times** - Sehri & Iftar times for Pakistani cities
 - **Automated Reminders** - 15 min before Sehri, at Iftar time
 - **Daily Hadith** - Authentic Ramadan hadiths (8 PM PKT)
 - **Daily Ayat** - Quranic verses (9 AM PKT)
 - **Countdown Timers** - Real-time countdown to Sehri/Iftar
 - **Iftar Dua** - Authentic dua posted at Iftar time
+- **Dependency Injection** - Injectable time, HTTP, and random providers for testing
 
 ### 🎯 Engagement & Automation
 - **Daily Streak System** - Track user participation
@@ -256,6 +257,38 @@ Defined in `pytest.ini`:
 - BaseTest class functionality
 ```
 
+### Testable Architecture (COMMIT 2)
+
+The RamadanBot class now uses **dependency injection** for full testability:
+
+```python
+from ramadan_features import RamadanBot
+from datetime import datetime
+import pytz
+
+PKT = pytz.timezone('Asia/Karachi')
+
+# Example: Test with mock time provider
+fake_time = lambda: datetime(2026, 3, 15, 18, 0, tzinfo=PKT)
+bot = RamadanBot(
+    bot=None,
+    now_provider=fake_time,           # Mock time
+    http_session_factory=MockHTTP,    # Mock HTTP calls
+    random_provider=MockRandom()      # Mock random values
+)
+
+# Now you can test prayer time calculations at any time!
+countdown = await bot.get_iftar_countdown()
+```
+
+**Benefits:**
+- ✅ Time can be mocked (test any time of day)
+- ✅ HTTP calls can be mocked (no real API calls)
+- ✅ Random values can be controlled (deterministic tests)
+- ✅ Schedulers can be tested without waiting
+
+See [docs/COMMIT_2_VERIFICATION.md](docs/COMMIT_2_VERIFICATION.md) for details.
+
 ---
 
 ## 🚢 Deployment
@@ -395,7 +428,7 @@ Optional:
 - **[docs/DEPLOYMENT_READY.md](docs/DEPLOYMENT_READY.md)** - Deployment guide
 - **[docs/RAMADAN_COMMANDS.md](docs/RAMADAN_COMMANDS.md)** - Ramadan features reference
 - **[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)** - GitHub configuration guide
-- **[.github/workflows/README.md](.github/workflows/README.md)** - CI/CD workflows
+- **[docs/COMMIT_2_VERIFICATION.md](docs/COMMIT_2_VERIFICATION.md)** - Testable architecture verification
 
 ### Command Reference
 
@@ -489,5 +522,10 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.0.0
-**Status**: ✅ Production Ready
+**Version**: 1.1.0 (Testable Architecture)
+**Status**: ✅ Production Ready | ✅ Fully Testable
+
+**Recent Changes:**
+- COMMIT 2: Refactored RamadanBot with dependency injection
+- Architecture now supports full unit testing
+- Time, HTTP, and random providers are injectable
