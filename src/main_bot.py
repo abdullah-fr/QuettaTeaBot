@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 import asyncio
 
 # Import our modules
-from src.question_bank import *
-from src.api_helpers import (
+from question_bank import *
+from api_helpers import (
     fetch_trivia_question, fetch_riddle, fetch_joke,
     fetch_qotd, fetch_wyr, fetch_conversation_starter,
     fetch_compliment, fetch_roast
 )
-from src.ramadan_features import initialize_ramadan_features
+from ramadan_features import initialize_ramadan_features
 
 load_dotenv()
 
