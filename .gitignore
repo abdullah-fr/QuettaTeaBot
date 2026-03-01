@@ -63,3 +63,4 @@ logs/
 
 # CI/CD
 .github/workflows/*.log
+reports/test_report.html
