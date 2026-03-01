@@ -23,6 +23,7 @@ async def test_fetch_trivia_question_api():
     # API may be unavailable or rate limited in CI
     if question_data is None:
         pytest.skip("Trivia API unavailable (rate limited or down)")
+        return
 
     # Verify response structure
     assert "q" in question_data
