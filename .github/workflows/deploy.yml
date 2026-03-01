@@ -36,9 +36,10 @@ jobs:
 
     - name: Verify bot_data.json exists
       run: |
-        if [ ! -f bot_data.json ]; then
+        if [ ! -f data/bot_data.json ]; then
           echo "Warning: bot_data.json not found, creating empty file"
-          echo '{}' > bot_data.json
+          mkdir -p data
+          echo '{}' > data/bot_data.json
         fi
 
   deploy:

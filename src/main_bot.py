@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 import asyncio
 
 # Import our modules
-from question_bank import *
-from api_helpers import (
+from src.question_bank import *
+from src.api_helpers import (
     fetch_trivia_question, fetch_riddle, fetch_joke,
     fetch_qotd, fetch_wyr, fetch_conversation_starter,
     fetch_compliment, fetch_roast
 )
-from ramadan_features import initialize_ramadan_features
+from src.ramadan_features import initialize_ramadan_features
 
 load_dotenv()
 
@@ -27,7 +27,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 sticky_message_id = None
 
 # Data storage
-DATA_FILE = "bot_data.json"
+DATA_FILE = "data/bot_data.json"
 
 def load_data():
     try:

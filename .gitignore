@@ -50,7 +50,7 @@ htmlcov/
 Thumbs.db
 
 # Bot Data (keep structure, ignore sensitive data)
-# bot_data.json should be tracked but can be ignored in production
+# data/bot_data.json should be tracked but can be ignored in production
 
 # Logs
 *.log

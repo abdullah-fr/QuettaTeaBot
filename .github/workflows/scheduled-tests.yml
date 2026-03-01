@@ -51,15 +51,15 @@ jobs:
 
     - name: Verify critical files exist
       run: |
-        test -f main_bot.py || exit 1
-        test -f ramadan_features.py || exit 1
-        test -f api_helpers.py || exit 1
-        test -f question_bank.py || exit 1
+        test -f src/main_bot.py || exit 1
+        test -f src/ramadan_features.py || exit 1
+        test -f src/api_helpers.py || exit 1
+        test -f src/question_bank.py || exit 1
         test -f requirements.txt || exit 1
-        test -f bot_data.json || exit 1
+        test -f data/bot_data.json || exit 1
         echo "✅ All critical files present"
 
     - name: Validate JSON files
       run: |
-        python -c "import json; json.load(open('bot_data.json'))"
+        python -c "import json; json.load(open('data/bot_data.json'))"
         echo "✅ bot_data.json is valid"

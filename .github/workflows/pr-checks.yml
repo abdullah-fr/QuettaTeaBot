@@ -27,10 +27,10 @@ jobs:
 
     - name: Check for syntax errors
       run: |
-        python -m py_compile main_bot.py
-        python -m py_compile ramadan_features.py
-        python -m py_compile api_helpers.py
-        python -m py_compile question_bank.py
+        python -m py_compile src/main_bot.py
+        python -m py_compile src/ramadan_features.py
+        python -m py_compile src/api_helpers.py
+        python -m py_compile src/question_bank.py
 
     - name: Run all tests
       run: |
@@ -46,7 +46,7 @@ jobs:
 
     - name: Validate bot_data.json structure
       run: |
-        python -c "import json; json.load(open('bot_data.json'))" && echo "✅ bot_data.json is valid JSON"
+        python -c "import json; json.load(open('data/bot_data.json'))" && echo "✅ bot_data.json is valid JSON"
 
     - name: PR size check
       run: |

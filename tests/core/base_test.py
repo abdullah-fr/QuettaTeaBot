@@ -14,7 +14,7 @@ class BaseTest:
     - assertions
     """
 
-    BOT_DATA_FILE = "bot_data.json"
+    BOT_DATA_FILE = "data/bot_data.json"
 
     # ----------------------------------
     # Test Lifecycle
