@@ -660,14 +660,88 @@ pytest -m database -v
 
 ```bash
 # Run with coverage
-pytest tgle Server Assumption**: Some automated tasks assume first server in bot.guilds
-3. **Hardcoded Channels**: Some features look for specific channel names ("general", "ramadan-special")
+pytest tests/ --cov=src --cov-report=html
 
-### Future Enhancements
+# Run with output (see print statements)
+pytest tests/ -v -s
 
-- [ ] Per-server configuration for automated tasks
-- [ ] Configurable channel names
-- [ ] Database support (PostgreSQL/MongoDB)
+# Run and stop on first failure
+pytest tests/ -v -x
+
+# Run only failed tests from last run
+pytest tests/ --lf
+
+# Skip slow tests
+pytest tests/ -m "not slow"
+
+# Run specific test class
+pytest tests/test_smoke.py::TestProjectSetup -v
+
+# Run with custom markers
+pytest -m "integration and api" -v
+```
+
+### By Test Directory
+
+```bash
+# All integration tests
+pytest tests/integration/ -v
+
+# All E2E tests
+pytest tests/e2e/ -v
+
+# All performance tests
+pytest tests/performance/ -v
+
+# All feature tests
+pytest tests/features/ -v
+```
+
+### By Specific File
+
+```bash
+# Single test file
+pytest tests/integration/test_api_integration.py -v
+
+# Specific test function
+pytest tests/integration/test_api_integration.py::test_fetch_joke_api -v
+
+# Multiple specific files
+pytest tests/test_smoke.py tests/features/test_iftar_countdown.py -v
+```
+
+### Important Notes
+
+**❌ Don't run tests directly with Python:**
+```bash
+# This will NOT work:
+python tests/integration/test_api_integration.py
+```
+
+**✅ Always use pytest:**
+```bash
+# This is correct:
+pytest tests/integration/test_api_integration.py -v
+```
+
+**Why?** pytest sets up the PYTHONPATH correctly so imports work.
+
+### Continuous Testing
+
+```bash
+# Watch mode (requires pytest-watch)
+pip install pytest-watch
+ptw tests/ -- -v
+```
+
+---
+
+## 🐛 Known Issues & Limitations
+
+### Current Limitations
+
+1. **API Dependencies**: Some features depend on external APIs that may be rate-limited
+2. **Sin
 - [ ] Web dashboard for configuration
 - [ ] Multi-language support
 - [ ] Advanced analytics and insights
