@@ -22,7 +22,7 @@ class TestProjectSetup(BaseTest):
         assert os.path.exists(os.path.join(project_root, "src"))
         assert os.path.exists(os.path.join(project_root, "tests"))
         assert os.path.exists(os.path.join(project_root, "data"))
-        assert os.path.exists(os.path.join(project_root, "docs"))
+        assert os.path.exists(os.path.join(project_root, "reports"))
 
         self.log("✅ All critical directories exist")
 
