@@ -451,6 +451,9 @@ Optional:
 - **[docs/RAMADAN_COMMANDS.md](docs/RAMADAN_COMMANDS.md)** - Ramadan features reference
 - **[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)** - GitHub configuration guide
 - **[docs/COMMIT_2_VERIFICATION.md](docs/COMMIT_2_VERIFICATION.md)** - Testable architecture verification
+- **[docs/COMMIT_3_VERIFICATION.md](docs/COMMIT_3_VERIFICATION.md)** - Unit testing implementation
+- **[docs/TEST_REPORTING.md](docs/TEST_REPORTING.md)** - Test reporting guide
+- **[docs/REPORT_PREVIEW.md](docs/REPORT_PREVIEW.md)** - Visual report preview
 
 ### Command Reference
 
