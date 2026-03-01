@@ -95,6 +95,11 @@ QuettaTeaBot/
 │   │   ├── __init__.py
 │   │   ├── test_iftar_countdown.py     # Countdown logic test
 │   │   └── test_scheduler_logic.py     # Scheduler tests (3 tests)
+│   ├── integration/           # Integration tests (22 tests)
+│   │   ├── __init__.py
+│   │   ├── test_ramadan_integration.py # Ramadan API integration
+│   │   ├── test_api_integration.py     # External API integration
+│   │   └── test_data_integration.py    # Data persistence tests
 │   └── utils/                 # Test utilities & mocks
 │       ├── __init__.py
 │       └── report_generator.py         # HTML report generator
@@ -258,7 +263,7 @@ Defined in `pytest.ini`:
 ### Current Test Coverage
 
 ```
-✅ 15 Tests Passing (11 Smoke + 4 Unit Tests)
+✅ 37 Tests Passing (11 Smoke + 4 Unit + 22 Integration)
 - Project structure validation
 - Source file existence
 - bot_data.json validity
@@ -268,6 +273,12 @@ Defined in `pytest.ini`:
 - Sehri reminder trigger (scheduler test)
 - Iftar reminder trigger (scheduler test)
 - No event at random times (scheduler test)
+- Ramadan API integration (prayer times, hadith, ayat)
+- External API integration (trivia, jokes)
+- Data persistence integration
+- Multi-city prayer times
+- Time conversion integration
+- Scheduler with real data
 ```
 
 **Test Report**: View detailed test results in `reports/test_report.html`
@@ -519,7 +530,7 @@ All essential documentation is in this README. For specific topics:
 
 - **Lines of Code**: ~3000+
 - **Features**: 25+
-- **Test Coverage**: 15 tests (11 smoke + 4 unit)
+- **Test Coverage**: 37 tests (11 smoke + 4 unit + 22 integration)
 - **Python Versions**: 3.10, 3.11, 3.12
 - **CI/CD**: Fully automated with GitHub Actions
 - **Deployment**: Railway (auto-deploy on push)
@@ -551,11 +562,12 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.3.0 (Scheduler Testing)
-**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Scheduler Tests Added
+**Version**: 1.4.0 (Integration Testing)
+**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Integration Tests Added
 
 **Recent Changes:**
-- COMMIT 4: Added time simulation tests for scheduled Ramadan tasks
-- Refactored scheduler logic for testability
-- 15 tests passing (11 smoke + 4 unit tests)
-- Scheduler tests verify Sehri/Iftar reminder triggers
+- COMMIT 5: Added integration testing and API validation layer
+- 37 tests passing (11 smoke + 4 unit + 22 integration)
+- Real API integration tests (prayer times, hadith, ayat, trivia, jokes)
+- Data persistence validation
+- Multi-module interaction testing
