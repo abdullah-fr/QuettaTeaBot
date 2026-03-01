@@ -100,6 +100,11 @@ QuettaTeaBot/
 │   │   ├── test_ramadan_integration.py # Ramadan API integration
 │   │   ├── test_api_integration.py     # External API integration
 │   │   └── test_data_integration.py    # Data persistence tests
+│   ├── e2e/                   # End-to-end tests (17 tests)
+│   │   ├── __init__.py
+│   │   ├── test_ramadan_workflow.py    # Ramadan user workflows
+│   │   ├── test_game_workflow.py       # Game user workflows
+│   │   └── test_data_workflow.py       # Data persistence workflows
 │   └── utils/                 # Test utilities & mocks
 │       ├── __init__.py
 │       └── report_generator.py         # HTML report generator
@@ -263,22 +268,42 @@ Defined in `pytest.ini`:
 ### Current Test Coverage
 
 ```
-✅ 37 Tests Passing (11 Smoke + 4 Unit + 22 Integration)
+✅ 54 Tests Passing (11 Smoke + 4 Unit + 22 Integration + 17 E2E)
+
+Smoke Tests (11):
 - Project structure validation
 - Source file existence
 - bot_data.json validity
 - Configuration file checks
 - BaseTest class functionality
-- Iftar countdown logic (unit test with time simulation)
-- Sehri reminder trigger (scheduler test)
-- Iftar reminder trigger (scheduler test)
-- No event at random times (scheduler test)
+
+Unit Tests (4):
+- Iftar countdown logic with time simulation
+- Sehri reminder trigger (scheduler)
+- Iftar reminder trigger (scheduler)
+- No event at random times (scheduler)
+
+Integration Tests (22):
 - Ramadan API integration (prayer times, hadith, ayat)
 - External API integration (trivia, jokes)
 - Data persistence integration
 - Multi-city prayer times
 - Time conversion integration
 - Scheduler with real data
+
+E2E Tests (17):
+- Complete Ramadan times workflow
+- City change workflow
+- Iftar countdown workflow
+- Hadith/Ayat request workflows
+- Multi-city comparison workflow
+- Scheduler reminder workflow
+- Complete day workflow
+- Trivia game workflow
+- Joke request workflow
+- Entertainment session workflow
+- Data persistence workflows
+- Multi-user data handling
 ```
 
 **Test Report**: View detailed test results in `reports/test_report.html`
@@ -530,7 +555,8 @@ All essential documentation is in this README. For specific topics:
 
 - **Lines of Code**: ~3000+
 - **Features**: 25+
-- **Test Coverage**: 37 tests (11 smoke + 4 unit + 22 integration)
+- **Test Coverage**: 54 tests (11 smoke + 4 unit + 22 integration + 17 E2E)
+- **Testing Pyramid**: ✅ Complete (Smoke → Unit → Integration → E2E)
 - **Python Versions**: 3.10, 3.11, 3.12
 - **CI/CD**: Fully automated with GitHub Actions
 - **Deployment**: Railway (auto-deploy on push)
@@ -562,12 +588,12 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.4.0 (Integration Testing)
-**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Integration Tests Added
+**Version**: 1.5.0 (E2E Testing)
+**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ E2E Tests Added
 
 **Recent Changes:**
-- COMMIT 5: Added integration testing and API validation layer
-- 37 tests passing (11 smoke + 4 unit + 22 integration)
-- Real API integration tests (prayer times, hadith, ayat, trivia, jokes)
-- Data persistence validation
-- Multi-module interaction testing
+- COMMIT 6: Added end-to-end testing for complete user workflows
+- 54 tests passing (11 smoke + 4 unit + 22 integration + 17 E2E)
+- Complete user journey testing (Ramadan, games, data)
+- Full testing pyramid implemented
+- Production-confidence testing achieved
