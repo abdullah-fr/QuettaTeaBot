@@ -105,6 +105,11 @@ QuettaTeaBot/
 │   │   ├── test_ramadan_workflow.py    # Ramadan user workflows
 │   │   ├── test_game_workflow.py       # Game user workflows
 │   │   └── test_data_workflow.py       # Data persistence workflows
+│   ├── performance/           # Performance tests (19 tests)
+│   │   ├── __init__.py
+│   │   ├── test_api_performance.py     # API response time tests
+│   │   ├── test_load.py                # Load testing scenarios
+│   │   └── test_stress.py              # Stress testing scenarios
 │   └── utils/                 # Test utilities & mocks
 │       ├── __init__.py
 │       └── report_generator.py         # HTML report generator
@@ -268,7 +273,7 @@ Defined in `pytest.ini`:
 ### Current Test Coverage
 
 ```
-✅ 54 Tests Passing (11 Smoke + 4 Unit + 22 Integration + 17 E2E)
+✅ 73 Tests Passing (11 Smoke + 4 Unit + 22 Integration + 17 E2E + 19 Performance)
 
 Smoke Tests (11):
 - Project structure validation
@@ -304,9 +309,24 @@ E2E Tests (17):
 - Entertainment session workflow
 - Data persistence workflows
 - Multi-user data handling
+
+Performance Tests (19):
+- API response time benchmarks (5 APIs)
+- Concurrent request handling
+- Sequential throughput
+- Cache performance
+- Normal load scenarios
+- Peak load scenarios
+- Sustained load testing
+- High concurrency stress
+- Rapid fire stress
+- Memory stress
+- Error recovery stress
+- Scheduler performance under load
 ```
 
 **Test Report**: View detailed test results in `reports/test_report.html`
+**Performance Baseline**: View performance metrics in `reports/PERFORMANCE_BASELINE.md`
 
 The test report features:
 - 📊 Beautiful Bootstrap-styled interface
@@ -555,8 +575,9 @@ All essential documentation is in this README. For specific topics:
 
 - **Lines of Code**: ~3000+
 - **Features**: 25+
-- **Test Coverage**: 54 tests (11 smoke + 4 unit + 22 integration + 17 E2E)
-- **Testing Pyramid**: ✅ Complete (Smoke → Unit → Integration → E2E)
+- **Test Coverage**: 73 tests (11 smoke + 4 unit + 22 integration + 17 E2E + 19 performance)
+- **Testing Pyramid**: ✅ Complete (Smoke → Unit → Integration → E2E + Performance)
+- **Performance**: ✅ Validated (API response < 2s, handles 20+ concurrent users)
 - **Python Versions**: 3.10, 3.11, 3.12
 - **CI/CD**: Fully automated with GitHub Actions
 - **Deployment**: Railway (auto-deploy on push)
@@ -588,12 +609,13 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.5.0 (E2E Testing)
-**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ E2E Tests Added
+**Version**: 1.6.0 (Performance Testing)
+**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Performance Validated
 
 **Recent Changes:**
-- COMMIT 6: Added end-to-end testing for complete user workflows
-- 54 tests passing (11 smoke + 4 unit + 22 integration + 17 E2E)
-- Complete user journey testing (Ramadan, games, data)
-- Full testing pyramid implemented
-- Production-confidence testing achieved
+- COMMIT 7: Added performance and load testing framework
+- 73 tests passing (11 smoke + 4 unit + 22 integration + 17 E2E + 19 performance)
+- Performance baseline established
+- API response times benchmarked
+- Load and stress testing implemented
+- System scalability validated
