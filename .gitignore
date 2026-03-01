@@ -45,6 +45,10 @@ htmlcov/
 .hypothesis/
 *.log
 
+# Auto-generated test reports (regenerated on each test run)
+reports/test_report.html
+reports/metrics.json
+
 # OS
 .DS_Store
 Thumbs.db

@@ -3,9 +3,9 @@
 <div align="center">
 
 ![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
-![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
+![Tests](https://github.com/abdullah-fr/QuettaTeaBot/workflows/Discord%20Bot%20Tests/badge.svg)
 ![Test Coverage](https://img.shields.io/badge/coverage-100%25-success)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-passing-brightgreen)
+![Deploy](https://github.com/abdullah-fr/QuettaTeaBot/workflows/Deploy%20to%20Production/badge.svg)
 ![License](https://img.shields.io/badge/license-Private-red)
 
 **A comprehensive Software Quality Assurance portfolio demonstrating professional testing practices**
@@ -812,6 +812,36 @@ QuettaTeaBot/
 ├── Procfile               # Railway deployment
 └── README.md              # This file
 ```
+
+---
+
+## 📚 Documentation
+
+### Available Documentation
+
+**Core Documentation**:
+- **README.md** - This file (comprehensive SQA portfolio overview)
+- **docs/PORTFOLIO.md** - Portfolio presentation for recruiters and hiring managers
+- **docs/TEST_STRATEGY.md** - Complete test strategy document (15 sections)
+- **docs/TEST_CASES.md** - 73 documented test cases with traceability matrix
+- **docs/BUG_REPORTS.md** - Professional bug reports with root cause analysis
+
+**Test Reports**:
+- **reports/PERFORMANCE_BASELINE.md** - Performance benchmarks and load testing results
+- **reports/test_report.html** - Visual test report (Bootstrap 5 styled, auto-generated)
+- **reports/metrics.json** - Test metrics in JSON format
+
+**Project Documentation**:
+- **FEATURE_AUDIT.md** - Comprehensive feature audit (25+ features verified)
+- **.github/PULL_REQUEST_TEMPLATE.md** - PR template for contributions
+
+### Quick Links
+
+- 📊 [View Test Strategy](docs/TEST_STRATEGY.md)
+- 📝 [View Test Cases](docs/TEST_CASES.md)
+- 🐛 [View Bug Reports](docs/BUG_REPORTS.md)
+- 💼 [View Portfolio Presentation](docs/PORTFOLIO.md)
+- ⚡ [View Performance Report](reports/PERFORMANCE_BASELINE.md)
 
 ---
 
