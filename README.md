@@ -227,8 +227,11 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 
-# Generate HTML test report
-pytest tests/ --html=reports/test_report.html --self-contained-html
+# Generate beautiful custom HTML test report (auto-generated on test run)
+pytest tests/ -v
+
+# Or use the standalone report generator
+python generate_report.py
 
 # Run specific test markers
 pytest tests/ -m "unit"          # Unit tests only
@@ -267,6 +270,14 @@ Defined in `pytest.ini`:
 ```
 
 **Test Report**: View detailed test results in `reports/test_report.html`
+
+The test report features:
+- 📊 Beautiful Bootstrap-styled interface
+- 📈 Visual progress bars and statistics
+- ✅ Individual test results with status badges
+- ⏱️ Execution time tracking
+- 📱 Responsive design for mobile viewing
+- 🎨 Color-coded test statuses (passed/failed/skipped)
 
 ### Testable Architecture (COMMIT 2)
 
