@@ -979,58 +979,66 @@ async def stats(ctx):
 @bot.event
 async def on_voice_state_update(member, before, after):
     user_id = str(member.id)
+    guild_id = str(member.guild.id)
+
+    # Create per-server tracking key
+    server_key = f"{user_id}_{guild_id}"
 
     # Initialize user data if not exists
-    if user_id not in bot_data["vc_time"]:
-        bot_data["vc_time"][user_id] = {"total_minutes": 0}
+    if server_key not in bot_data["vc_time"]:
+        bot_data["vc_time"][server_key] = {"total_minutes": 0}
 
     # Joined VC
     if before.channel is None and after.channel is not None:
-        bot_data["vc_time"][user_id]["join_time"] = datetime.now().isoformat()
+        bot_data["vc_time"][server_key]["join_time"] = datetime.now().isoformat()
         save_data(bot_data)
-        print(f"✅ {member.name} joined VC at {datetime.now()}")
+        print(f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
 
     # Left VC
     elif before.channel is not None and after.channel is None:
-        if "join_time" in bot_data["vc_time"][user_id]:
+        if "join_time" in bot_data["vc_time"][server_key]:
             join_time = datetime.fromisoformat(
-                bot_data["vc_time"][user_id]["join_time"]
+                bot_data["vc_time"][server_key]["join_time"]
             )
             duration = (datetime.now() - join_time).total_seconds() / 60
 
-            bot_data["vc_time"][user_id]["total_minutes"] += duration
-            del bot_data["vc_time"][user_id]["join_time"]
+            bot_data["vc_time"][server_key]["total_minutes"] += duration
+            del bot_data["vc_time"][server_key]["join_time"]
             save_data(bot_data)
             print(
-                f"✅ {member.name} left VC. Session: {duration:.1f} min, Total: {bot_data['vc_time'][user_id]['total_minutes']:.1f} min"
+                f"✅ {member.name} left VC in {member.guild.name}. Session: {duration:.1f} min, Total: {bot_data['vc_time'][server_key]['total_minutes']:.1f} min"
             )
 
 
 @bot.command()
 async def vctime(ctx):
-    """Check your voice chat time - Copy: !vctime"""
+    """Check your voice chat time in this server - Copy: !vctime"""
     user_id = str(ctx.author.id)
+    guild_id = str(ctx.guild.id)
+
+    # Create per-server tracking key
+    server_key = f"{user_id}_{guild_id}"
 
     # Initialize if not exists
-    if user_id not in bot_data["vc_time"]:
-        bot_data["vc_time"][user_id] = {"total_minutes": 0}
+    if server_key not in bot_data["vc_time"]:
+        bot_data["vc_time"][server_key] = {"total_minutes": 0}
         save_data(bot_data)
 
-    total_minutes = bot_data["vc_time"][user_id].get("total_minutes", 0)
+    total_minutes = bot_data["vc_time"][server_key].get("total_minutes", 0)
 
     # Add current session time if user is currently in VC
-    if "join_time" in bot_data["vc_time"][user_id]:
-        join_time = datetime.fromisoformat(bot_data["vc_time"][user_id]["join_time"])
+    if "join_time" in bot_data["vc_time"][server_key]:
+        join_time = datetime.fromisoformat(bot_data["vc_time"][server_key]["join_time"])
         current_session = (datetime.now() - join_time).total_seconds() / 60
         total_minutes += current_session
 
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
-        await ctx.send(f"🎤 You've spent **{hours}h {minutes}m** in voice channels!")
+        await ctx.send(f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{ctx.guild.name}**!")
     else:
         await ctx.send(
-            "You haven't joined any voice channels yet! Join a VC to start tracking your time."
+            "You haven't joined any voice channels in this server yet! Join a VC to start tracking your time."
         )
 
 
