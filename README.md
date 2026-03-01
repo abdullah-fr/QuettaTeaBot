@@ -91,9 +91,13 @@ QuettaTeaBot/
 │   │   ├── __init__.py
 │   │   └── base_test.py       # Base test class
 │   ├── features/              # Feature-specific tests
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── test_iftar_countdown.py  # Unit test for iftar countdown
 │   └── utils/                 # Test utilities & mocks
 │       └── __init__.py
+│
+├── reports/                    # Test reports
+│   └── test_report.html       # HTML test report (auto-generated)
 │
 ├── data/                       # Data storage
 │   ├── bot_data.json          # Persistent bot data
@@ -223,6 +227,9 @@ pytest tests/ -v
 # Run with coverage
 pytest tests/ --cov=src --cov-report=html
 
+# Generate HTML test report
+pytest tests/ --html=reports/test_report.html --self-contained-html
+
 # Run specific test markers
 pytest tests/ -m "unit"          # Unit tests only
 pytest tests/ -m "ramadan"       # Ramadan feature tests
@@ -230,6 +237,7 @@ pytest tests/ -m "integration"   # Integration tests
 
 # Run specific test file
 pytest tests/test_smoke.py -v
+pytest tests/features/test_iftar_countdown.py -v
 ```
 
 ### Test Markers
@@ -249,13 +257,16 @@ Defined in `pytest.ini`:
 ### Current Test Coverage
 
 ```
-✅ 11 Smoke Tests Passing
+✅ 12 Tests Passing (11 Smoke + 1 Unit Test)
 - Project structure validation
 - Source file existence
 - bot_data.json validity
 - Configuration file checks
 - BaseTest class functionality
+- Iftar countdown logic (unit test with time simulation)
 ```
+
+**Test Report**: View detailed test results in `reports/test_report.html`
 
 ### Testable Architecture (COMMIT 2)
 
@@ -522,10 +533,11 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.1.0 (Testable Architecture)
-**Status**: ✅ Production Ready | ✅ Fully Testable
+**Version**: 1.2.0 (Unit Testing)
+**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Unit Tests Added
 
 **Recent Changes:**
-- COMMIT 2: Refactored RamadanBot with dependency injection
-- Architecture now supports full unit testing
-- Time, HTTP, and random providers are injectable
+- COMMIT 3: Added first unit test for iftar countdown logic
+- Time simulation testing with fake providers
+- HTML test reporting with pytest-html
+- 12 tests passing (11 smoke + 1 unit)

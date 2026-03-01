@@ -44,6 +44,7 @@ htmlcov/
 .tox/
 .hypothesis/
 *.log
+reports/
 
 # OS
 .DS_Store
