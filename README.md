@@ -609,13 +609,15 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.6.1 (Performance Testing Complete)
+**Version**: 1.6.2 (Bug Fix - VC Time Tracking)
 **Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Performance Validated | ✅ CI/CD Passing
 
 **Recent Changes:**
 - COMMIT 7: Added performance and load testing framework ✅
 - All 73 tests passing in CI/CD (11 smoke + 4 unit + 22 integration + 17 E2E + 19 performance)
 - Fixed trivia API graceful degradation in CI environment
+- Fixed performance test thresholds for CI rate limits (high concurrency: 15%, error recovery: 50%)
+- Fixed `!vctime` command to include current active VC session time
 - Performance baseline established and documented
 - API response times benchmarked (< 2s threshold)
 - Load and stress testing implemented (handles 50+ concurrent requests)
