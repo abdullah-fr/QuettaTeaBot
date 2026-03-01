@@ -86,15 +86,18 @@ QuettaTeaBot/
 │
 ├── tests/                      # Test suite
 │   ├── __init__.py
+│   ├── conftest.py            # Pytest configuration & hooks
 │   ├── test_smoke.py          # Smoke tests (11 tests)
 │   ├── core/                  # Core testing infrastructure
 │   │   ├── __init__.py
 │   │   └── base_test.py       # Base test class
 │   ├── features/              # Feature-specific tests
 │   │   ├── __init__.py
-│   │   └── test_iftar_countdown.py  # Unit test for iftar countdown
+│   │   ├── test_iftar_countdown.py     # Countdown logic test
+│   │   └── test_scheduler_logic.py     # Scheduler tests (3 tests)
 │   └── utils/                 # Test utilities & mocks
-│       └── __init__.py
+│       ├── __init__.py
+│       └── report_generator.py         # HTML report generator
 │
 ├── reports/                    # Test reports
 │   └── test_report.html       # Beautiful HTML test report
@@ -255,13 +258,16 @@ Defined in `pytest.ini`:
 ### Current Test Coverage
 
 ```
-✅ 12 Tests Passing (11 Smoke + 1 Unit Test)
+✅ 15 Tests Passing (11 Smoke + 4 Unit Tests)
 - Project structure validation
 - Source file existence
 - bot_data.json validity
 - Configuration file checks
 - BaseTest class functionality
 - Iftar countdown logic (unit test with time simulation)
+- Sehri reminder trigger (scheduler test)
+- Iftar reminder trigger (scheduler test)
+- No event at random times (scheduler test)
 ```
 
 **Test Report**: View detailed test results in `reports/test_report.html`
@@ -513,7 +519,7 @@ All essential documentation is in this README. For specific topics:
 
 - **Lines of Code**: ~3000+
 - **Features**: 25+
-- **Test Coverage**: Growing (11 smoke tests currently)
+- **Test Coverage**: 15 tests (11 smoke + 4 unit)
 - **Python Versions**: 3.10, 3.11, 3.12
 - **CI/CD**: Fully automated with GitHub Actions
 - **Deployment**: Railway (auto-deploy on push)
@@ -545,11 +551,11 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.2.0 (Unit Testing)
-**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Unit Tests Added
+**Version**: 1.3.0 (Scheduler Testing)
+**Status**: ✅ Production Ready | ✅ Fully Testable | ✅ Scheduler Tests Added
 
 **Recent Changes:**
-- COMMIT 3: Added first unit test for iftar countdown logic
-- Time simulation testing with fake providers
-- HTML test reporting with pytest-html
-- 12 tests passing (11 smoke + 1 unit)
+- COMMIT 4: Added time simulation tests for scheduled Ramadan tasks
+- Refactored scheduler logic for testability
+- 15 tests passing (11 smoke + 4 unit tests)
+- Scheduler tests verify Sehri/Iftar reminder triggers

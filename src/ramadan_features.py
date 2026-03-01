@@ -280,6 +280,42 @@ class RamadanBot:
         if hour_12 == 0:
             hour_12 = 12
         return f"{hour_12}:{minute:02d} {period}"
+    async def process_prayer_time_check(self, bot):
+        """
+        Extracted logic for testing scheduled reminders.
+        Returns event type: 'SEHRI_REMINDER', 'IFTAR_TIME', or None
+        """
+        now = self.now_provider()
+        current_time = now.strftime("%H:%M")
+        current_date = now.strftime("%Y-%m-%d")
+
+        timings = await self.fetch_prayer_times()
+        if not timings:
+            return None
+
+        fajr_time = timings["Fajr"]
+        maghrib_time = timings["Maghrib"]
+
+        # Parse Fajr time
+        fajr_hour, fajr_minute = map(int, fajr_time.split(":"))
+
+        # Calculate Sehri reminder time (15 minutes before Fajr)
+        sehri_reminder_dt = now.replace(
+            hour=fajr_hour, minute=fajr_minute, second=0, microsecond=0
+        ) - timedelta(minutes=RAMADAN_CONFIG["sehri_reminder_minutes"])
+
+        sehri_reminder_time = sehri_reminder_dt.strftime("%H:%M")
+
+        # Check for Sehri reminder
+        if current_time == sehri_reminder_time:
+            return "SEHRI_REMINDER"
+
+        # Check for Iftar time
+        if current_time == maghrib_time:
+            return "IFTAR_TIME"
+
+        return None
+
 
 
 # Setup commands
@@ -457,8 +493,12 @@ def setup_ramadan_tasks(bot, ramadan_bot):
     @tasks.loop(minutes=1)
     async def check_prayer_times():
         """Check for Sehri and Iftar times every minute"""
+        event = await ramadan_bot.process_prayer_time_check(bot)
+
+        if not event:
+            return
+
         now = ramadan_bot.now_provider()
-        current_time = now.strftime("%H:%M")
         current_date = now.strftime("%Y-%m-%d")
 
         timings = await ramadan_bot.fetch_prayer_times()
@@ -468,21 +508,8 @@ def setup_ramadan_tasks(bot, ramadan_bot):
         fajr_time = timings["Fajr"]
         maghrib_time = timings["Maghrib"]
 
-        # Parse times
-        fajr_hour, fajr_minute = map(int, fajr_time.split(":"))
-        maghrib_hour, maghrib_minute = map(int, maghrib_time.split(":"))
-
-        # Calculate Sehri reminder time (15 minutes before Fajr)
-        sehri_reminder_dt = now.replace(
-            hour=fajr_hour, minute=fajr_minute, second=0
-        ) - timedelta(minutes=RAMADAN_CONFIG["sehri_reminder_minutes"])
-        sehri_reminder_time = sehri_reminder_dt.strftime("%H:%M")
-
         # Sehri reminder
-        if (
-            current_time == sehri_reminder_time
-            and ramadan_bot.last_sehri_reminder != current_date
-        ):
+        if event == "SEHRI_REMINDER" and ramadan_bot.last_sehri_reminder != current_date:
             channel = discord.utils.get(
                 bot.guilds[0].text_channels, name=RAMADAN_CONFIG["general_channel"]
             )
@@ -513,10 +540,7 @@ def setup_ramadan_tasks(bot, ramadan_bot):
                 ramadan_bot.last_sehri_reminder = current_date
 
         # Iftar time
-        if (
-            current_time == maghrib_time
-            and ramadan_bot.last_iftar_reminder != current_date
-        ):
+        elif event == "IFTAR_TIME" and ramadan_bot.last_iftar_reminder != current_date:
             channel = discord.utils.get(
                 bot.guilds[0].text_channels, name=RAMADAN_CONFIG["general_channel"]
             )
