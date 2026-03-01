@@ -97,17 +97,12 @@ QuettaTeaBot/
 │       └── __init__.py
 │
 ├── reports/                    # Test reports
-│   └── test_report.html       # HTML test report (auto-generated)
+│   └── test_report.html       # Beautiful HTML test report
 │
 ├── data/                       # Data storage
 │   ├── bot_data.json          # Persistent bot data
 │   ├── __init__.py
 │   └── .gitkeep
-│
-├── docs/                       # Documentation
-│   ├── DEPLOYMENT_READY.md    # Deployment guide
-│   ├── RAMADAN_COMMANDS.md    # Ramadan features reference
-│   └── GITHUB_SETUP.md        # GitHub configuration guide
 │
 ├── Procfile                    # Railway/Heroku process definition
 ├── nixpacks.toml               # Railway build configuration
@@ -444,28 +439,31 @@ Optional:
 
 ## 📚 Documentation
 
-### Available Documentation
+All essential documentation is in this README. For specific topics:
 
-- **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Detailed project structure
-- **[docs/DEPLOYMENT_READY.md](docs/DEPLOYMENT_READY.md)** - Deployment guide
-- **[docs/RAMADAN_COMMANDS.md](docs/RAMADAN_COMMANDS.md)** - Ramadan features reference
-- **[docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)** - GitHub configuration guide
-- **[docs/COMMIT_2_VERIFICATION.md](docs/COMMIT_2_VERIFICATION.md)** - Testable architecture verification
-- **[docs/COMMIT_3_VERIFICATION.md](docs/COMMIT_3_VERIFICATION.md)** - Unit testing implementation
-- **[docs/TEST_REPORTING.md](docs/TEST_REPORTING.md)** - Test reporting guide
-- **[docs/REPORT_PREVIEW.md](docs/REPORT_PREVIEW.md)** - Visual report preview
+- **Project Structure**: See the [Project Structure](#-project-structure) section above
+- **Testing**: See the [Testing](#-testing) section
+- **Deployment**: See the [Deployment](#-deployment) section
+- **CI/CD**: See the [CI/CD Pipeline](#-cicd-pipeline) section
+- **Contributing**: See the [Contributing](#-contributing) section
 
-### Command Reference
+---
 
 #### Ramadan Commands
 ```
 !ramadan-times              - Show Sehri & Iftar times
-!ramadan-city [city]        - Change city for prayer times
+!ramadan-city [city]        - Change city (Islamabad, Lahore, Karachi, Faisalabad, Rawalpindi, Multan, Peshawar, Quetta)
 !hadith                     - Random Ramadan hadith
 !ayat                       - Random Quranic verse
 !iftar-countdown            - Countdown to Iftar
 !sehri-countdown            - Countdown to Sehri closing
 ```
+
+**Automated Features:**
+- Sehri Reminder: 15 min before Fajr (posts in #general)
+- Iftar Reminder: At Maghrib time with authentic dua (posts in #general)
+- Daily Hadith: 8:00 PM PKT (posts in #ramadan-special or #general)
+- Daily Ayat: 9:00 AM PKT (posts in #ramadan-special or #general)
 
 #### Game Commands
 ```
