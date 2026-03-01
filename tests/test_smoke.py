@@ -5,7 +5,6 @@ These tests ensure the project structure and imports work correctly.
 """
 
 import os
-import json
 import pytest
 from tests.core.base_test import BaseTest
 

@@ -3,6 +3,8 @@ Expandable question banks with tracking to avoid repetition
 Questions are randomly selected and tracked to prevent repeats
 """
 
+import random
+
 # ==================== QOTD QUESTIONS (Expandable) ====================
 QOTD_QUESTIONS = [
     "What's your favorite childhood memory?",
@@ -534,28 +536,24 @@ SONGS = [
     {"lyrics": "Mera bichra yaar mujhe aaj mil gaya", "answer": "Mera Bichra Yaar"},
     {"lyrics": "Dil ki lagi na mano", "answer": "Dil Ki Lagi"},
     {"lyrics": "Tera woh pyar yaad hai mujhe", "answer": "Tera Woh Pyar"},
-
     # Pakistani Modern
     {"lyrics": "Aadat si hai mujhko aise jeene mein", "answer": "Aadat"},
     {"lyrics": "Tera mera rishta purana", "answer": "Tera Mera Rishta"},
     {"lyrics": "Sayonee mere dil ki", "answer": "Sayonee"},
     {"lyrics": "Duur na jaana", "answer": "Duur"},
     {"lyrics": "Khudi ko kar buland itna", "answer": "Khudi"},
-
     # Indian Classics
     {"lyrics": "Mere sapno ki rani kab aayegi tu", "answer": "Mere Sapno Ki Rani"},
     {"lyrics": "Yeh dosti hum nahi todenge", "answer": "Yeh Dosti"},
     {"lyrics": "Kabhi kabhi mere dil mein khayal aata hai", "answer": "Kabhi Kabhi"},
     {"lyrics": "Tum hi ho bandhu sakha tumhi", "answer": "Tum Hi Ho"},
     {"lyrics": "Lag ja gale ke phir ye haseen raat ho na ho", "answer": "Lag Ja Gale"},
-
     # Indian Modern/Bollywood
     {"lyrics": "Tum hi ho tum hi ho zindagi ab tum hi ho", "answer": "Tum Hi Ho"},
     {"lyrics": "Tujhe dekha to ye jaana sanam", "answer": "Tujhe Dekha To"},
     {"lyrics": "Chaiyya chaiyya chaiyya chaiyya", "answer": "Chaiyya Chaiyya"},
     {"lyrics": "Kal ho naa ho kal ho naa ho", "answer": "Kal Ho Naa Ho"},
     {"lyrics": "Kuch kuch hota hai tum nahi samjhoge", "answer": "Kuch Kuch Hota Hai"},
-
     # Famous English Songs
     {"lyrics": "I'm walking on sunshine, whoa oh", "answer": "Walking on Sunshine"},
     {"lyrics": "Is this the real life? Is this just fantasy?", "answer": "Bohemian Rhapsody"},
@@ -585,21 +583,65 @@ URDU_POETRY = [
 
 # ==================== PICTIONARY WORDS ====================
 PICTIONARY_WORDS = [
-    "cat", "dog", "house", "tree", "car", "sun", "moon", "star",
-    "flower", "book", "phone", "computer", "pizza", "burger", "cake",
-    "guitar", "piano", "drum", "rainbow", "cloud", "mountain", "beach",
-    "bicycle", "airplane", "boat", "train", "elephant", "lion", "bird",
-    "fish", "butterfly", "spider", "snake", "turtle", "rocket", "castle"
+    "cat",
+    "dog",
+    "house",
+    "tree",
+    "car",
+    "sun",
+    "moon",
+    "star",
+    "flower",
+    "book",
+    "phone",
+    "computer",
+    "pizza",
+    "burger",
+    "cake",
+    "guitar",
+    "piano",
+    "drum",
+    "rainbow",
+    "cloud",
+    "mountain",
+    "beach",
+    "bicycle",
+    "airplane",
+    "boat",
+    "train",
+    "elephant",
+    "lion",
+    "bird",
+    "fish",
+    "butterfly",
+    "spider",
+    "snake",
+    "turtle",
+    "rocket",
+    "castle",
 ]
 
 # ==================== PETS ====================
-PETS = ["🐶 Dog", "🐱 Cat", "🐰 Rabbit", "🐹 Hamster", "🐦 Bird",
-        "🐠 Fish", "🐢 Turtle", "🦎 Lizard", "🐷 Pig", "🐸 Frog"]
+PETS = ["🐶 Dog", "🐱 Cat", "🐰 Rabbit", "🐹 Hamster", "🐦 Bird", "🐠 Fish", "🐢 Turtle", "🦎 Lizard", "🐷 Pig", "🐸 Frog"]
 
 # ==================== COLLECTIBLE ITEMS ====================
-ITEMS = ["🍎 Apple", "🍕 Pizza", "💎 Diamond", "🎁 Gift Box", "⚔️ Sword",
-         "🛡️ Shield", "🏹 Bow", "🔮 Crystal Ball", "📿 Amulet", "👑 Crown",
-         "🎨 Paint Brush", "📚 Ancient Book", "🗝️ Golden Key", "💰 Treasure Chest"]
+ITEMS = [
+    "🍎 Apple",
+    "🍕 Pizza",
+    "💎 Diamond",
+    "🎁 Gift Box",
+    "⚔️ Sword",
+    "🛡️ Shield",
+    "🏹 Bow",
+    "🔮 Crystal Ball",
+    "📿 Amulet",
+    "👑 Crown",
+    "🎨 Paint Brush",
+    "📚 Ancient Book",
+    "🗝️ Golden Key",
+    "💰 Treasure Chest",
+]
+
 
 def get_random_question(question_list, asked_list, max_history=50):
     """

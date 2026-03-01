@@ -43,11 +43,7 @@ class BaseTest:
     # ----------------------------------
 
     def project_root(self):
-        return os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(__file__)
-            )
-        )
+        return os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
     def bot_data_path(self):
         return os.path.join(self.project_root(), self.BOT_DATA_FILE)
