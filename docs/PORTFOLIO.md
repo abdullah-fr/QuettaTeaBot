@@ -375,78 +375,9 @@ bot = RamadanBot(bot=None, now_provider=fake_time)
 
 ## Resume Bullet Points
 
-Use these for your resume:
+**📄 See `docs/PERSONAL_INFO.md` for customizable resume bullet points, cover letter templates, and personal information.**
 
-```
-• Designed and implemented comprehensive test strategy with 73 automated tests
-  across 5 testing levels (smoke, unit, integration, E2E, performance),
-  achieving 100% pass rate in production
-
-• Built CI/CD pipeline using GitHub Actions with automated testing, deployment,
-  and monitoring across Python 3.10-3.12, reducing deployment time by 80%
-
-• Performed load and stress testing with 50+ concurrent users, establishing
-  performance baselines with < 2s response time for all API endpoints
-
-• Implemented dependency injection pattern for testable architecture, enabling
-  time simulation for scheduler testing and 100% test automation
-
-• Discovered and fixed 2 critical bugs through systematic testing, documented
-  with professional bug reports including root cause analysis
-
-• Created comprehensive test documentation including test strategy, test cases,
-  bug reports, and performance baselines following industry standards
-```
-
----
-
-## LinkedIn Post Template
-
-```
-🎯 Excited to share my latest SQA portfolio project!
-
-I built a comprehensive testing framework for a Discord bot with 25+ features,
-demonstrating professional QA practices:
-
-✅ 73 automated tests across 5 testing levels
-✅ 100% test pass rate in production
-✅ Full CI/CD pipeline with GitHub Actions
-✅ Performance testing with load & stress scenarios
-✅ Complete test documentation
-
-Key achievements:
-• Implemented dependency injection for time simulation testing
-• Discovered and fixed bugs through systematic testing
-• Established performance baselines (< 2s response time)
-• Achieved 99.9% uptime in production
-
-Technologies: Python, pytest, GitHub Actions, Railway
-
-Check it out: [GitHub link]
-
-#SoftwareQA #Testing #Python #DevOps #QualityAssurance #Automation
-```
-
----
-
-## Cover Letter Highlight
-
-```
-I recently completed a comprehensive SQA portfolio project that demonstrates
-my expertise in test automation, performance testing, and CI/CD. The project
-includes 73 automated tests across 5 testing levels, achieving 100% pass rate
-in production with response times under 2 seconds.
-
-Key highlights include:
-• Designed complete test strategy from planning to execution
-• Built CI/CD pipeline with automated testing and deployment
-• Performed load testing with 50+ concurrent users
-• Discovered and fixed bugs through systematic testing
-• Created professional test documentation following industry standards
-
-This project showcases my ability to ensure software quality through
-comprehensive testing practices and automation.
-```
+This file is in `.gitignore` so you can keep your personal details private on your local machine.
 
 ---
 
@@ -478,15 +409,15 @@ I also benchmarked API response times, establishing baselines under 2 seconds fo
 
 ---
 
-## Contact Information
+## Personal Information
 
-**GitHub**: [abdullah-fr](https://github.com/abdullah-fr)
-**Project**: [QuettaTeaBot](https://github.com/abdullah-fr/QuettaTeaBot)
-**Email**: [Your Email]
-**LinkedIn**: [Your LinkedIn]
+**📄 All personal information (contact details, resume templates, cover letters) is in `docs/PERSONAL_INFO.md`**
+
+This file is private and not committed to Git. You can customize it with your personal details.
 
 ---
 
 **Portfolio Version**: 1.0
 **Last Updated**: March 1, 2026
 **Status**: ✅ Production Ready
+

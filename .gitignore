@@ -49,6 +49,9 @@ htmlcov/
 reports/test_report.html
 reports/metrics.json
 
+# Personal information (keep private on local machine)
+docs/PERSONAL_INFO.md
+
 # OS
 .DS_Store
 Thumbs.db
