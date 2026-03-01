@@ -1,0 +1,62 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'tests/**'
+      - '.github/**'
+  workflow_dispatch:
+
+jobs:
+  test-before-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest tests/ -v --tb=short
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Verify bot_data.json exists
+      run: |
+        if [ ! -f bot_data.json ]; then
+          echo "Warning: bot_data.json not found, creating empty file"
+          echo '{}' > bot_data.json
+        fi
+
+  deploy:
+    needs: test-before-deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Railway
+      run: |
+        echo "🚀 Deployment triggered"
+        echo "Railway will auto-deploy from main branch"
+        echo "Monitor at: https://railway.app"
+
+    - name: Deployment notification
+      run: |
+        echo "✅ Deployment pipeline completed"
+        echo "Bot will restart automatically on Railway"

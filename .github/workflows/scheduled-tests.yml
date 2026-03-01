@@ -1,0 +1,65 @@
+name: Scheduled Tests
+
+on:
+  schedule:
+    # Run tests every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  nightly-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run full test suite
+      run: |
+        pytest tests/ -v --tb=long
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Check for dependency updates
+      run: |
+        pip list --outdated
+      continue-on-error: true
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Nightly tests failed!"
+        echo "Check the workflow logs for details"
+
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Verify critical files exist
+      run: |
+        test -f main_bot.py || exit 1
+        test -f ramadan_features.py || exit 1
+        test -f api_helpers.py || exit 1
+        test -f question_bank.py || exit 1
+        test -f requirements.txt || exit 1
+        test -f bot_data.json || exit 1
+        echo "✅ All critical files present"
+
+    - name: Validate JSON files
+      run: |
+        python -c "import json; json.load(open('bot_data.json'))"
+        echo "✅ bot_data.json is valid"

@@ -1,0 +1,92 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Check for syntax errors
+      run: |
+        python -m py_compile main_bot.py
+        python -m py_compile ramadan_features.py
+        python -m py_compile api_helpers.py
+        python -m py_compile question_bank.py
+
+    - name: Run all tests
+      run: |
+        pytest tests/ -v --tb=short
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Checking for unresolved TODOs..."
+        grep -r "TODO\|FIXME" --include="*.py" . || echo "No TODOs found"
+      continue-on-error: true
+
+    - name: Validate bot_data.json structure
+      run: |
+        python -c "import json; json.load(open('bot_data.json'))" && echo "✅ bot_data.json is valid JSON"
+
+    - name: PR size check
+      run: |
+        FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+        echo "Files changed: $FILES_CHANGED"
+        if [ $FILES_CHANGED -gt 20 ]; then
+          echo "⚠️  Warning: Large PR with $FILES_CHANGED files changed"
+          echo "Consider breaking this into smaller PRs"
+        fi
+
+  test-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies with coverage
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov
+
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ --cov=. --cov-report=term --cov-report=html
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      continue-on-error: true
+
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: htmlcov/
+        retention-days: 7
