@@ -23,7 +23,7 @@ class TestProjectSetup(BaseTest):
         assert os.path.exists(os.path.join(project_root, "src"))
         assert os.path.exists(os.path.join(project_root, "tests"))
         assert os.path.exists(os.path.join(project_root, "data"))
-        assert os.path.exists(os.path.join(project_root, "config"))
+        assert os.path.exists(os.path.join(project_root, "docs"))
 
         self.log("✅ All critical directories exist")
 
@@ -81,10 +81,9 @@ class TestProjectSetup(BaseTest):
         self.log("Testing configuration files...")
 
         project_root = self.project_root()
-        config_dir = os.path.join(project_root, "config")
 
-        assert os.path.exists(os.path.join(config_dir, "Procfile"))
-        assert os.path.exists(os.path.join(config_dir, "nixpacks.toml"))
+        assert os.path.exists(os.path.join(project_root, "Procfile"))
+        assert os.path.exists(os.path.join(project_root, "nixpacks.toml"))
 
         self.log("✅ Configuration files exist")
 

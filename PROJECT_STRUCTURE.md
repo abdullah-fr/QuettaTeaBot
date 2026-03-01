@@ -17,8 +17,7 @@ QuettaTeaBot/
 │   └── PULL_REQUEST_TEMPLATE.md
 │
 ├── config/                     # Configuration files
-│   ├── Procfile               # Heroku/Railway process
-│   └── nixpacks.toml          # Railway build config
+│   └── (deployment configs in root)
 │
 ├── data/                       # Data storage
 │   ├── bot_data.json          # Bot persistent data
@@ -123,13 +122,13 @@ Persistent bot data structure:
 
 ## Configuration Files
 
-### `config/Procfile`
+### `Procfile`
 Railway/Heroku process definition:
 ```
 worker: python src/main_bot.py
 ```
 
-### `config/nixpacks.toml`
+### `nixpacks.toml`
 Railway build configuration with Python setup.
 
 ### `pytest.ini`
