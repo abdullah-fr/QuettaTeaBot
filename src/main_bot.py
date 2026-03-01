@@ -1018,6 +1018,12 @@ async def vctime(ctx):
 
     total_minutes = bot_data["vc_time"][user_id].get("total_minutes", 0)
 
+    # Add current session time if user is currently in VC
+    if "join_time" in bot_data["vc_time"][user_id]:
+        join_time = datetime.fromisoformat(bot_data["vc_time"][user_id]["join_time"])
+        current_session = (datetime.now() - join_time).total_seconds() / 60
+        total_minutes += current_session
+
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
