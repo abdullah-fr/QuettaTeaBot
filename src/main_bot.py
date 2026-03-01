@@ -125,22 +125,32 @@ COLOR_ROLES = {
 
 class ColorRoleButton(Button):
     def __init__(self, color_name):
-        super().__init__(label=color_name, style=discord.ButtonStyle.gray, custom_id=f"color_role_{color_name}")
+        super().__init__(
+            label=color_name,
+            style=discord.ButtonStyle.gray,
+            custom_id=f"color_role_{color_name}",
+        )
         self.color_name = color_name
 
     async def callback(self, interaction: discord.Interaction):
         role = discord.utils.get(interaction.guild.roles, name=self.color_name)
         if not role:
-            await interaction.response.send_message(f"⚠️ Role {self.color_name} not found!", ephemeral=True)
+            await interaction.response.send_message(
+                f"⚠️ Role {self.color_name} not found!", ephemeral=True
+            )
             return
         current_roles = [r for r in interaction.user.roles if r.name in COLOR_ROLES]
         if current_roles:
             await interaction.user.remove_roles(*current_roles)
         try:
             await interaction.user.add_roles(role)
-            await interaction.response.send_message(f"You have selected **{self.color_name}** ✅", ephemeral=True)
+            await interaction.response.send_message(
+                f"You have selected **{self.color_name}** ✅", ephemeral=True
+            )
         except:
-            await interaction.response.send_message(f"⚠️ Error assigning role", ephemeral=True)
+            await interaction.response.send_message(
+                f"⚠️ Error assigning role", ephemeral=True
+            )
 
 
 class ColorRoleView(View):
@@ -168,49 +178,79 @@ class NotificationView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🔔 VC Pings", style=discord.ButtonStyle.gray, custom_id="notif_vc_ping")
+    @discord.ui.button(
+        label="🔔 VC Pings", style=discord.ButtonStyle.gray, custom_id="notif_vc_ping"
+    )
     async def vc_ping(self, interaction: discord.Interaction, button: Button):
         role = discord.utils.get(interaction.guild.roles, name="VC Ping")
         if role:
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message("🔕 VC Ping disabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔕 VC Ping disabled", ephemeral=True
+                )
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message("🔔 VC Ping enabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔔 VC Ping enabled", ephemeral=True
+                )
 
-    @discord.ui.button(label="💬 Chat Pings", style=discord.ButtonStyle.gray, custom_id="notif_chat_ping")
+    @discord.ui.button(
+        label="💬 Chat Pings",
+        style=discord.ButtonStyle.gray,
+        custom_id="notif_chat_ping",
+    )
     async def chat_ping(self, interaction: discord.Interaction, button: Button):
         role = discord.utils.get(interaction.guild.roles, name="Chat Ping")
         if role:
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message("🔕 Chat Ping disabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔕 Chat Ping disabled", ephemeral=True
+                )
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message("🔔 Chat Ping enabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔔 Chat Ping enabled", ephemeral=True
+                )
 
-    @discord.ui.button(label="🎮 Game Pings", style=discord.ButtonStyle.gray, custom_id="notif_game_ping")
+    @discord.ui.button(
+        label="🎮 Game Pings",
+        style=discord.ButtonStyle.gray,
+        custom_id="notif_game_ping",
+    )
     async def game_ping(self, interaction: discord.Interaction, button: Button):
         role = discord.utils.get(interaction.guild.roles, name="Game Ping")
         if role:
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message("🔕 Game Ping disabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔕 Game Ping disabled", ephemeral=True
+                )
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message("🔔 Game Ping enabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔔 Game Ping enabled", ephemeral=True
+                )
 
-    @discord.ui.button(label="🎉 Event Pings", style=discord.ButtonStyle.gray, custom_id="notif_event_ping")
+    @discord.ui.button(
+        label="🎉 Event Pings",
+        style=discord.ButtonStyle.gray,
+        custom_id="notif_event_ping",
+    )
     async def event_ping(self, interaction: discord.Interaction, button: Button):
         role = discord.utils.get(interaction.guild.roles, name="Event Ping")
         if role:
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
-                await interaction.response.send_message("🔕 Event Ping disabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔕 Event Ping disabled", ephemeral=True
+                )
             else:
                 await interaction.user.add_roles(role)
-                await interaction.response.send_message("🔔 Event Ping enabled", ephemeral=True)
+                await interaction.response.send_message(
+                    "🔔 Event Ping enabled", ephemeral=True
+                )
 
 
 # ==================== TRIVIA GAME (API - Unlimited) ====================
@@ -220,7 +260,9 @@ active_trivias = {}
 
 @tasks.loop(hours=24)
 async def daily_trivia():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")  # Changed to general
+    channel = discord.utils.get(
+        bot.guilds[0].text_channels, name="general"
+    )  # Changed to general
     if channel:
         question = await fetch_trivia_question()
         if not question:
@@ -230,7 +272,11 @@ async def daily_trivia():
                 "options": ["Karachi", "Islamabad", "Lahore", "Quetta"],
             }
 
-        embed = discord.Embed(title="🧠 Daily Trivia!", description=question["q"], color=discord.Color.blue())
+        embed = discord.Embed(
+            title="🧠 Daily Trivia!",
+            description=question["q"],
+            color=discord.Color.blue(),
+        )
         for i, opt in enumerate(question["options"], 1):
             embed.add_field(name=f"Option {i}", value=opt, inline=False)
         embed.set_footer(text="Reply with your answer! Results in 2 minutes.")
@@ -238,7 +284,11 @@ async def daily_trivia():
         msg = await channel.send(embed=embed)
 
         # Store trivia data
-        active_trivias[msg.id] = {"question": question, "answers": {}, "channel": channel}
+        active_trivias[msg.id] = {
+            "question": question,
+            "answers": {},
+            "channel": channel,
+        }
 
         # Wait 2 minutes then reveal answer
         await asyncio.sleep(120)
@@ -269,7 +319,9 @@ async def trivia(ctx):
             "options": ["Karachi", "Islamabad", "Lahore", "Quetta"],
         }
 
-    embed = discord.Embed(title="🧠 Trivia Time!", description=question["q"], color=discord.Color.blue())
+    embed = discord.Embed(
+        title="🧠 Trivia Time!", description=question["q"], color=discord.Color.blue()
+    )
     for i, opt in enumerate(question["options"], 1):
         embed.add_field(name=f"Option {i}", value=opt, inline=False)
     embed.set_footer(text="Reply with your answer! Results in 2 minutes.")
@@ -278,7 +330,11 @@ async def trivia(ctx):
     await ctx.send("`!trivia` - Copy this command", delete_after=20)
 
     # Store trivia data
-    active_trivias[msg.id] = {"question": question, "answers": {}, "channel": ctx.channel}
+    active_trivias[msg.id] = {
+        "question": question,
+        "answers": {},
+        "channel": ctx.channel,
+    }
 
     # Wait 2 minutes then reveal answer
     await asyncio.sleep(120)
@@ -309,15 +365,23 @@ async def reveal_trivia_answer(trivia_id):
 
     # Create results embed
     embed = discord.Embed(
-        title="🎯 Trivia Results!", description=f"**Correct Answer:** {question['a']}", color=discord.Color.green()
+        title="🎯 Trivia Results!",
+        description=f"**Correct Answer:** {question['a']}",
+        color=discord.Color.green(),
     )
 
     if correct_users:
-        embed.add_field(name="✅ Correct Answers", value=", ".join(correct_users), inline=False)
+        embed.add_field(
+            name="✅ Correct Answers", value=", ".join(correct_users), inline=False
+        )
     else:
-        embed.add_field(name="❌ No Correct Answers", value="Better luck next time!", inline=False)
+        embed.add_field(
+            name="❌ No Correct Answers", value="Better luck next time!", inline=False
+        )
 
-    embed.add_field(name="📊 Total Responses", value=f"{len(answers)} people answered", inline=False)
+    embed.add_field(
+        name="📊 Total Responses", value=f"{len(answers)} people answered", inline=False
+    )
 
     await channel.send(embed=embed)
 
@@ -359,13 +423,19 @@ async def triviascores(ctx):
 # ==================== WOULD YOU RATHER (API - Unlimited) ====================
 @tasks.loop(hours=24)
 async def daily_wyr():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")  # Changed to general
+    channel = discord.utils.get(
+        bot.guilds[0].text_channels, name="general"
+    )  # Changed to general
     if channel:
         question = await fetch_wyr()
         if not question:
             question = random.choice(WYR_QUESTIONS)
 
-        embed = discord.Embed(title="🤔 Would You Rather?", description=question, color=discord.Color.purple())
+        embed = discord.Embed(
+            title="🤔 Would You Rather?",
+            description=question,
+            color=discord.Color.purple(),
+        )
         msg = await channel.send(embed=embed)
         await msg.add_reaction("1️⃣")
         await msg.add_reaction("2️⃣")
@@ -390,7 +460,9 @@ async def wyr(ctx):
     if not question:
         question = random.choice(WYR_QUESTIONS)
 
-    embed = discord.Embed(title="🤔 Would You Rather?", description=question, color=discord.Color.purple())
+    embed = discord.Embed(
+        title="🤔 Would You Rather?", description=question, color=discord.Color.purple()
+    )
     msg = await ctx.send(embed=embed)
     await ctx.send("`!wyr` - Copy this command", delete_after=20)
     await msg.add_reaction("1️⃣")
@@ -402,7 +474,11 @@ async def wyr(ctx):
 async def guessong(ctx):
     """Guess the song from lyrics"""
     song = random.choice(SONGS)
-    embed = discord.Embed(title="🎵 Guess the Song!", description=f"**Lyrics:** {song['lyrics']}", color=discord.Color.green())
+    embed = discord.Embed(
+        title="🎵 Guess the Song!",
+        description=f"**Lyrics:** {song['lyrics']}",
+        color=discord.Color.green(),
+    )
     embed.set_footer(text="Reply with the song name!")
     await ctx.send(embed=embed)
     await ctx.send("`!guessong` - Copy this command", delete_after=20)
@@ -417,7 +493,9 @@ async def guessong(ctx):
             bot_data["song_guess_scores"][user_id] = 0
         bot_data["song_guess_scores"][user_id] += 1
         save_data(bot_data)
-        await ctx.send(f"🎉 {answer.author.mention} got it! The song is **{song['answer']}**")
+        await ctx.send(
+            f"🎉 {answer.author.mention} got it! The song is **{song['answer']}**"
+        )
     except asyncio.TimeoutError:
         await ctx.send(f"⏰ Time's up! The song was: **{song['answer']}**")
 
@@ -429,18 +507,27 @@ active_riddles = {}
 
 @tasks.loop(hours=24)
 async def daily_riddle():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")  # Changed to general
+    channel = discord.utils.get(
+        bot.guilds[0].text_channels, name="general"
+    )  # Changed to general
     if channel:
         riddle = await fetch_riddle()
         if not riddle:
             riddles_list = [
                 {"q": "What has keys but no locks?", "a": "keyboard"},
                 {"q": "I speak without a mouth. What am I?", "a": "echo"},
-                {"q": "The more you take, the more you leave behind.", "a": "footsteps"},
+                {
+                    "q": "The more you take, the more you leave behind.",
+                    "a": "footsteps",
+                },
             ]
             riddle = random.choice(riddles_list)
 
-        embed = discord.Embed(title="🤯 Daily Riddle!", description=riddle["q"], color=discord.Color.orange())
+        embed = discord.Embed(
+            title="🤯 Daily Riddle!",
+            description=riddle["q"],
+            color=discord.Color.orange(),
+        )
         embed.set_footer(text="You have 5 minutes to guess! First correct answer wins.")
 
         msg = await channel.send(embed=embed)
@@ -476,7 +563,9 @@ async def riddle(ctx):
         ]
         riddle = random.choice(riddles_list)
 
-    embed = discord.Embed(title="🤯 Riddle Time!", description=riddle["q"], color=discord.Color.orange())
+    embed = discord.Embed(
+        title="🤯 Riddle Time!", description=riddle["q"], color=discord.Color.orange()
+    )
     embed.set_footer(text="You have 5 minutes to guess! First correct answer wins.")
 
     msg = await ctx.send(embed=embed)
@@ -501,8 +590,14 @@ async def reveal_riddle_answer(riddle_id):
         riddle = riddle_data["riddle"]
         channel = riddle_data["channel"]
 
-        embed = discord.Embed(title="⏰ Time's Up!", description=f"**Answer:** {riddle['a']}", color=discord.Color.red())
-        embed.add_field(name="❌ No one guessed it!", value="Better luck next time!", inline=False)
+        embed = discord.Embed(
+            title="⏰ Time's Up!",
+            description=f"**Answer:** {riddle['a']}",
+            color=discord.Color.red(),
+        )
+        embed.add_field(
+            name="❌ No one guessed it!", value="Better luck next time!", inline=False
+        )
 
         await channel.send(embed=embed)
 
@@ -530,7 +625,9 @@ async def on_message_riddle_answer(message):
                     description=f"{message.author.mention} got it right!",
                     color=discord.Color.green(),
                 )
-                embed.add_field(name="✅ Correct Answer", value=riddle["a"], inline=False)
+                embed.add_field(
+                    name="✅ Correct Answer", value=riddle["a"], inline=False
+                )
 
                 await message.channel.send(embed=embed)
 
@@ -553,7 +650,11 @@ async def roast(ctx, member: discord.Member = None):
     if not roast_text:
         roast_text = random.choice(ROASTS)
 
-    embed = discord.Embed(title="🔥 Roast Battle!", description=f"{member.mention} {roast_text}", color=discord.Color.red())
+    embed = discord.Embed(
+        title="🔥 Roast Battle!",
+        description=f"{member.mention} {roast_text}",
+        color=discord.Color.red(),
+    )
     embed.set_footer(text="")
     await ctx.send(embed=embed)
 
@@ -568,7 +669,11 @@ async def daily_qotd():
         if not question:
             question = random.choice(QOTD_QUESTIONS)
 
-        embed = discord.Embed(title="💭 Question of the Day", description=question, color=discord.Color.teal())
+        embed = discord.Embed(
+            title="💭 Question of the Day",
+            description=question,
+            color=discord.Color.teal(),
+        )
         await channel.send(embed=embed)
 
 
@@ -591,7 +696,9 @@ async def qotd(ctx):
     if not question:
         question = random.choice(QOTD_QUESTIONS)
 
-    embed = discord.Embed(title="💭 Question of the Day", description=question, color=discord.Color.teal())
+    embed = discord.Embed(
+        title="💭 Question of the Day", description=question, color=discord.Color.teal()
+    )
     await ctx.send(embed=embed)
 
 
@@ -616,7 +723,9 @@ async def check_dead_chat():
             if time_diff >= 2:
                 # Check if we already posted recently
                 if channel_id in bot_data["last_message_time"]:
-                    last_bot_post = datetime.fromisoformat(bot_data["last_message_time"][channel_id])
+                    last_bot_post = datetime.fromisoformat(
+                        bot_data["last_message_time"][channel_id]
+                    )
                     if (current_time - last_bot_post).total_seconds() / 3600 < 3:
                         return  # Don't spam
 
@@ -626,7 +735,9 @@ async def check_dead_chat():
                     starter = random.choice(CONVERSATION_STARTERS)
 
                 embed = discord.Embed(
-                    title="💬 Chat seems quiet... Let's talk!", description=starter, color=discord.Color.blue()
+                    title="💬 Chat seems quiet... Let's talk!",
+                    description=starter,
+                    color=discord.Color.blue(),
                 )
                 await channel.send(embed=embed)
 
@@ -644,7 +755,9 @@ async def starter(ctx):
     if not starter:
         starter = random.choice(CONVERSATION_STARTERS)
 
-    embed = discord.Embed(title="💬 Conversation Starter", description=starter, color=discord.Color.blue())
+    embed = discord.Embed(
+        title="💬 Conversation Starter", description=starter, color=discord.Color.blue()
+    )
     await ctx.send(embed=embed)
 
 
@@ -655,7 +768,11 @@ async def daily_compliment():
     channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
     if channel:
         # Pick a random online member
-        online_members = [m for m in channel.guild.members if m.status != discord.Status.offline and not m.bot]
+        online_members = [
+            m
+            for m in channel.guild.members
+            if m.status != discord.Status.offline and not m.bot
+        ]
         if online_members:
             member = random.choice(online_members)
 
@@ -664,7 +781,9 @@ async def daily_compliment():
                 compliment_text = random.choice(COMPLIMENTS)
 
             embed = discord.Embed(
-                title="💝 Daily Compliment", description=f"{member.mention} {compliment_text}", color=discord.Color.pink()
+                title="💝 Daily Compliment",
+                description=f"{member.mention} {compliment_text}",
+                color=discord.Color.pink(),
             )
             await channel.send(embed=embed)
 
@@ -691,7 +810,11 @@ async def compliment(ctx, member: discord.Member = None):
     if not compliment_text:
         compliment_text = random.choice(COMPLIMENTS)
 
-    embed = discord.Embed(title="💝 Compliment", description=f"{member.mention} {compliment_text}", color=discord.Color.pink())
+    embed = discord.Embed(
+        title="💝 Compliment",
+        description=f"{member.mention} {compliment_text}",
+        color=discord.Color.pink(),
+    )
     await ctx.send(embed=embed)
 
 
@@ -700,7 +823,11 @@ async def compliment(ctx, member: discord.Member = None):
 async def firsttype(ctx):
     """First to type wins! - Copy: !firsttype"""
     word = random.choice(["PIZZA", "DISCORD", "GAMING", "COFFEE", "MUSIC"])
-    embed = discord.Embed(title="⚡ First to Type Wins!", description=f"Type: **{word}**", color=discord.Color.gold())
+    embed = discord.Embed(
+        title="⚡ First to Type Wins!",
+        description=f"Type: **{word}**",
+        color=discord.Color.gold(),
+    )
     await ctx.send(embed=embed)
 
     def check(m):
@@ -723,7 +850,9 @@ async def daily(ctx):
     if user_id not in bot_data["daily_streaks"]:
         bot_data["daily_streaks"][user_id] = {"last_claim": today, "streak": 1}
     else:
-        last_claim = datetime.fromisoformat(bot_data["daily_streaks"][user_id]["last_claim"]).date()
+        last_claim = datetime.fromisoformat(
+            bot_data["daily_streaks"][user_id]["last_claim"]
+        ).date()
         today_date = datetime.now().date()
 
         if last_claim == today_date:
@@ -740,7 +869,9 @@ async def daily(ctx):
     streak = bot_data["daily_streaks"][user_id]["streak"]
 
     embed = discord.Embed(
-        title="🎁 Daily Reward Claimed!", description=f"Current streak: **{streak} days** 🔥", color=discord.Color.gold()
+        title="🎁 Daily Reward Claimed!",
+        description=f"Current streak: **{streak} days** 🔥",
+        color=discord.Color.gold(),
     )
     await ctx.send(embed=embed)
 
@@ -793,12 +924,17 @@ async def on_message_delete(message):
         deleted_by = "Self-deleted or Unknown"
         try:
             await asyncio.sleep(0.5)  # Small delay for audit log to update
-            async for entry in message.guild.audit_logs(limit=5, action=discord.AuditLogAction.message_delete):
+            async for entry in message.guild.audit_logs(
+                limit=5, action=discord.AuditLogAction.message_delete
+            ):
                 # Check if this entry matches our deleted message
                 if (
                     entry.target.id == message.author.id
                     and entry.extra.channel.id == message.channel.id
-                    and (datetime.now() - entry.created_at.replace(tzinfo=None)).total_seconds() < 2
+                    and (
+                        datetime.now() - entry.created_at.replace(tzinfo=None)
+                    ).total_seconds()
+                    < 2
                 ):
                     deleted_by = entry.user.mention
                     break
@@ -827,7 +963,9 @@ async def stats(ctx):
     text_channels = len(guild.text_channels)
     voice_channels = len(guild.voice_channels)
 
-    embed = discord.Embed(title=f"📊 {guild.name} Statistics", color=discord.Color.blue())
+    embed = discord.Embed(
+        title=f"📊 {guild.name} Statistics", color=discord.Color.blue()
+    )
     embed.add_field(name="Total Members", value=total_members, inline=True)
     embed.add_field(name="Online Members", value=online_members, inline=True)
     embed.add_field(name="Text Channels", value=text_channels, inline=True)
@@ -855,7 +993,9 @@ async def on_voice_state_update(member, before, after):
     # Left VC
     elif before.channel is not None and after.channel is None:
         if "join_time" in bot_data["vc_time"][user_id]:
-            join_time = datetime.fromisoformat(bot_data["vc_time"][user_id]["join_time"])
+            join_time = datetime.fromisoformat(
+                bot_data["vc_time"][user_id]["join_time"]
+            )
             duration = (datetime.now() - join_time).total_seconds() / 60
 
             bot_data["vc_time"][user_id]["total_minutes"] += duration
@@ -883,7 +1023,9 @@ async def vctime(ctx):
         minutes = int(total_minutes % 60)
         await ctx.send(f"🎤 You've spent **{hours}h {minutes}m** in voice channels!")
     else:
-        await ctx.send("You haven't joined any voice channels yet! Join a VC to start tracking your time.")
+        await ctx.send(
+            "You haven't joined any voice channels yet! Join a VC to start tracking your time."
+        )
 
 
 # ==================== REACTION ROLES ====================
@@ -891,37 +1033,53 @@ class HobbyRoleView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🎮 Gaming", style=discord.ButtonStyle.gray, custom_id="hobby_gaming")
+    @discord.ui.button(
+        label="🎮 Gaming", style=discord.ButtonStyle.gray, custom_id="hobby_gaming"
+    )
     async def gaming(self, interaction: discord.Interaction, button: discord.ui.Button):
         role = discord.utils.get(interaction.guild.roles, name="Gaming")
         await self.toggle_role(interaction, role)
 
-    @discord.ui.button(label="🎨 Art", style=discord.ButtonStyle.gray, custom_id="hobby_art")
+    @discord.ui.button(
+        label="🎨 Art", style=discord.ButtonStyle.gray, custom_id="hobby_art"
+    )
     async def art(self, interaction: discord.Interaction, button: discord.ui.Button):
         role = discord.utils.get(interaction.guild.roles, name="Art")
         await self.toggle_role(interaction, role)
 
-    @discord.ui.button(label="🎵 Music", style=discord.ButtonStyle.gray, custom_id="hobby_music")
+    @discord.ui.button(
+        label="🎵 Music", style=discord.ButtonStyle.gray, custom_id="hobby_music"
+    )
     async def music(self, interaction: discord.Interaction, button: discord.ui.Button):
         role = discord.utils.get(interaction.guild.roles, name="Music")
         await self.toggle_role(interaction, role)
 
-    @discord.ui.button(label="📚 Reading", style=discord.ButtonStyle.gray, custom_id="hobby_reading")
-    async def reading(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="📚 Reading", style=discord.ButtonStyle.gray, custom_id="hobby_reading"
+    )
+    async def reading(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         role = discord.utils.get(interaction.guild.roles, name="Reading")
         await self.toggle_role(interaction, role)
 
     async def toggle_role(self, interaction, role):
         if not role:
-            await interaction.response.send_message("❌ Role not found!", ephemeral=True)
+            await interaction.response.send_message(
+                "❌ Role not found!", ephemeral=True
+            )
             return
 
         if role in interaction.user.roles:
             await interaction.user.remove_roles(role)
-            await interaction.response.send_message(f"Removed {role.name} role", ephemeral=True)
+            await interaction.response.send_message(
+                f"Removed {role.name} role", ephemeral=True
+            )
         else:
             await interaction.user.add_roles(role)
-            await interaction.response.send_message(f"Added {role.name} role", ephemeral=True)
+            await interaction.response.send_message(
+                f"Added {role.name} role", ephemeral=True
+            )
 
 
 @bot.command()
@@ -929,7 +1087,9 @@ class HobbyRoleView(discord.ui.View):
 async def setuphobbies(ctx):
     """Setup hobby reaction roles"""
     embed = discord.Embed(
-        title="🎯 Choose Your Hobbies!", description="Click the buttons below to get hobby roles", color=discord.Color.green()
+        title="🎯 Choose Your Hobbies!",
+        description="Click the buttons below to get hobby roles",
+        color=discord.Color.green(),
     )
     await ctx.send(embed=embed, view=HobbyRoleView())
 
@@ -986,7 +1146,11 @@ async def adopt(ctx):
     bot_data["pet_system"][user_id] = {"pet": pet, "hunger": 100, "happiness": 100}
     save_data(bot_data)
 
-    embed = discord.Embed(title="🎉 Pet Adopted!", description=f"You adopted a {pet}!", color=discord.Color.green())
+    embed = discord.Embed(
+        title="🎉 Pet Adopted!",
+        description=f"You adopted a {pet}!",
+        color=discord.Color.green(),
+    )
     await ctx.send(embed=embed)
 
 
@@ -998,8 +1162,12 @@ async def feedpet(ctx):
         await ctx.send("You don't have a pet! Use `!adopt` first.")
         return
 
-    bot_data["pet_system"][user_id]["hunger"] = min(100, bot_data["pet_system"][user_id]["hunger"] + 20)
-    bot_data["pet_system"][user_id]["happiness"] = min(100, bot_data["pet_system"][user_id]["happiness"] + 10)
+    bot_data["pet_system"][user_id]["hunger"] = min(
+        100, bot_data["pet_system"][user_id]["hunger"] + 20
+    )
+    bot_data["pet_system"][user_id]["happiness"] = min(
+        100, bot_data["pet_system"][user_id]["happiness"] + 10
+    )
     save_data(bot_data)
 
     pet = bot_data["pet_system"][user_id]["pet"]
@@ -1045,7 +1213,11 @@ async def inventory(ctx):
         return
 
     items = bot_data["inventory"][user_id]
-    embed = discord.Embed(title="🎒 Your Inventory", description="\n".join(items), color=discord.Color.purple())
+    embed = discord.Embed(
+        title="🎒 Your Inventory",
+        description="\n".join(items),
+        color=discord.Color.purple(),
+    )
     await ctx.send(embed=embed)
 
 
@@ -1054,7 +1226,9 @@ async def inventory(ctx):
 async def rekhta(ctx):
     """Get random Urdu poetry - Copy: !rekhta"""
     poetry = random.choice(URDU_POETRY)
-    embed = discord.Embed(title="📜 Urdu Poetry", description=poetry, color=discord.Color.gold())
+    embed = discord.Embed(
+        title="📜 Urdu Poetry", description=poetry, color=discord.Color.gold()
+    )
     await ctx.send(embed=embed)
 
 
@@ -1077,7 +1251,9 @@ async def pictionary(ctx):
     """Start a Pictionary game - Copy: !pictionary"""
     word = random.choice(PICTIONARY_WORDS)
     embed = discord.Embed(
-        title="🎨 Pictionary!", description=f"Draw: **{word}**\nOthers: Guess what's being drawn!", color=discord.Color.blue()
+        title="🎨 Pictionary!",
+        description=f"Draw: **{word}**\nOthers: Guess what's being drawn!",
+        color=discord.Color.blue(),
     )
     await ctx.send(embed=embed)
 
@@ -1090,7 +1266,9 @@ async def joke(ctx):
     if not joke_text:
         joke_text = "Why don't scientists trust atoms? Because they make up everything!"
 
-    embed = discord.Embed(title="😂 Here's a Joke!", description=joke_text, color=discord.Color.gold())
+    embed = discord.Embed(
+        title="😂 Here's a Joke!", description=joke_text, color=discord.Color.gold()
+    )
     await ctx.send(embed=embed)
 
 
@@ -1191,7 +1369,11 @@ async def post_channel_announcements():
     # Music channel
     music = discord.utils.get(guild.text_channels, name="music")
     if music and not await announcement_exists(music, "New Features"):
-        embed = discord.Embed(title="🎵 New Features!", description="New music game added!", color=discord.Color.green())
+        embed = discord.Embed(
+            title="🎵 New Features!",
+            description="New music game added!",
+            color=discord.Color.green(),
+        )
         embed.add_field(
             name="🎵 Guess the Song",
             value="• `!guessong` - Guess song from lyrics\n• First to guess wins points!",
@@ -1207,7 +1389,9 @@ async def post_channel_announcements():
     extras = discord.utils.get(guild.text_channels, name="extras")
     if extras and not await announcement_exists(extras, "New Features"):
         embed = discord.Embed(
-            title="✨ New Features!", description="Tons of new commands and features!", color=discord.Color.purple()
+            title="✨ New Features!",
+            description="Tons of new commands and features!",
+            color=discord.Color.purple(),
         )
         embed.add_field(
             name="🎮 Games & Fun",
@@ -1224,7 +1408,9 @@ async def post_channel_announcements():
             value="• `!adopt` - Adopt a pet\n• `!feedpet` - Feed your pet\n• `!mypet` - Check pet status\n• `!collect` - Collect items\n• `!inventory` - View inventory",
             inline=False,
         )
-        embed.add_field(name="📊 Info", value="• `!stats` - Server statistics", inline=False)
+        embed.add_field(
+            name="📊 Info", value="• `!stats` - Server statistics", inline=False
+        )
         msg = await extras.send(embed=embed)
         try:
             await msg.pin()
@@ -1254,7 +1440,11 @@ async def post_channel_announcements():
             value="• `!qotd` - Get QOTD anytime\n• `!compliment @user` - Compliment someone\n• `!starter` - Get conversation starter",
             inline=False,
         )
-        embed.add_field(name="🎉 Auto Features", value="• Milestone celebrations when we hit member goals!", inline=False)
+        embed.add_field(
+            name="🎉 Auto Features",
+            value="• Milestone celebrations when we hit member goals!",
+            inline=False,
+        )
         msg = await general.send(embed=embed)
         try:
             await msg.pin()
@@ -1264,8 +1454,16 @@ async def post_channel_announcements():
     # Rekhta channel
     rekhta = discord.utils.get(guild.text_channels, name="rekhta")
     if rekhta and not await announcement_exists(rekhta, "New Feature"):
-        embed = discord.Embed(title="📜 New Feature!", description="Urdu poetry generator added!", color=discord.Color.gold())
-        embed.add_field(name="📜 Urdu Poetry", value="• `!rekhta` - Get random Urdu poetry", inline=False)
+        embed = discord.Embed(
+            title="📜 New Feature!",
+            description="Urdu poetry generator added!",
+            color=discord.Color.gold(),
+        )
+        embed.add_field(
+            name="📜 Urdu Poetry",
+            value="• `!rekhta` - Get random Urdu poetry",
+            inline=False,
+        )
         msg = await rekhta.send(embed=embed)
         try:
             await msg.pin()
@@ -1275,7 +1473,11 @@ async def post_channel_announcements():
     # Sketch-guess channel
     sketch = discord.utils.get(guild.text_channels, name="sketch-guess")
     if sketch:
-        embed = discord.Embed(title="🎨 New Feature!", description="Pictionary game added!", color=discord.Color.blue())
+        embed = discord.Embed(
+            title="🎨 New Feature!",
+            description="Pictionary game added!",
+            color=discord.Color.blue(),
+        )
         embed.add_field(
             name="🎨 Pictionary",
             value="• `!pictionary` - Start a drawing game\n• One person draws, others guess!",

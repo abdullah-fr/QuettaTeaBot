@@ -8,14 +8,18 @@ async def fetch_trivia_question():
     """Fetch unlimited trivia from Open Trivia Database"""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://opentdb.com/api.php?amount=1&type=multiple") as resp:
+            async with session.get(
+                "https://opentdb.com/api.php?amount=1&type=multiple"
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if data["response_code"] == 0:
                         q_data = data["results"][0]
                         question = html.unescape(q_data["question"])
                         correct = html.unescape(q_data["correct_answer"])
-                        incorrect = [html.unescape(ans) for ans in q_data["incorrect_answers"]]
+                        incorrect = [
+                            html.unescape(ans) for ans in q_data["incorrect_answers"]
+                        ]
                         options = incorrect + [correct]
                         random.shuffle(options)
                         return {"q": question, "a": correct, "options": options}
@@ -30,7 +34,9 @@ async def fetch_riddle():
     try:
         async with aiohttp.ClientSession() as session:
             headers = {"X-Api-Key": "YOUR_API_KEY"}
-            async with session.get("https://api.api-ninjas.com/v1/riddles", headers=headers) as resp:
+            async with session.get(
+                "https://api.api-ninjas.com/v1/riddles", headers=headers
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if data:
@@ -62,7 +68,9 @@ async def fetch_qotd():
     """Fetch unlimited conversation questions"""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://api.quotable.io/quotes/random?limit=1") as resp:
+            async with session.get(
+                "https://api.quotable.io/quotes/random?limit=1"
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if data and len(data) > 0:
@@ -73,7 +81,9 @@ async def fetch_qotd():
     # Fallback: Use philosophy questions
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://opentdb.com/api.php?amount=1&category=9") as resp:
+            async with session.get(
+                "https://opentdb.com/api.php?amount=1&category=9"
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if data["response_code"] == 0:
@@ -103,7 +113,9 @@ async def fetch_wyr():
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get("https://www.boredapi.com/api/activity") as resp1:
-                async with session.get("https://www.boredapi.com/api/activity") as resp2:
+                async with session.get(
+                    "https://www.boredapi.com/api/activity"
+                ) as resp2:
                     if resp1.status == 200 and resp2.status == 200:
                         data1 = await resp1.json()
                         data2 = await resp2.json()
@@ -119,7 +131,10 @@ async def fetch_conversation_starter():
     """Fetch unlimited conversation starters"""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://api.adviceslip.com/advice", headers={"Accept": "application/json"}) as resp:
+            async with session.get(
+                "https://api.adviceslip.com/advice",
+                headers={"Accept": "application/json"},
+            ) as resp:
                 if resp.status == 200:
                     text = await resp.text()
                     import json
@@ -133,7 +148,9 @@ async def fetch_conversation_starter():
     # Fallback: Random interesting fact
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://uselessfacts.jsph.pl/random.json?language=en") as resp:
+            async with session.get(
+                "https://uselessfacts.jsph.pl/random.json?language=en"
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if "text" in data:
@@ -149,7 +166,9 @@ async def fetch_compliment():
     """Fetch unlimited compliments"""
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://compliments-api.herokuapp.com/compliment") as resp:
+            async with session.get(
+                "https://compliments-api.herokuapp.com/compliment"
+            ) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if "compliment" in data:

@@ -556,8 +556,14 @@ SONGS = [
     {"lyrics": "Kuch kuch hota hai tum nahi samjhoge", "answer": "Kuch Kuch Hota Hai"},
     # Famous English Songs
     {"lyrics": "I'm walking on sunshine, whoa oh", "answer": "Walking on Sunshine"},
-    {"lyrics": "Is this the real life? Is this just fantasy?", "answer": "Bohemian Rhapsody"},
-    {"lyrics": "Just a small town girl, living in a lonely world", "answer": "Don't Stop Believin'"},
+    {
+        "lyrics": "Is this the real life? Is this just fantasy?",
+        "answer": "Bohemian Rhapsody",
+    },
+    {
+        "lyrics": "Just a small town girl, living in a lonely world",
+        "answer": "Don't Stop Believin'",
+    },
     {"lyrics": "I got the eye of the tiger, a fighter", "answer": "Eye of the Tiger"},
     {"lyrics": "We will, we will rock you", "answer": "We Will Rock You"},
     {"lyrics": "Hello from the other side", "answer": "Hello"},
@@ -567,7 +573,10 @@ SONGS = [
     {"lyrics": "We found love in a hopeless place", "answer": "We Found Love"},
     {"lyrics": "I will always love you", "answer": "I Will Always Love You"},
     {"lyrics": "Sweet dreams are made of this", "answer": "Sweet Dreams"},
-    {"lyrics": "Don't stop me now, I'm having such a good time", "answer": "Don't Stop Me Now"},
+    {
+        "lyrics": "Don't stop me now, I'm having such a good time",
+        "answer": "Don't Stop Me Now",
+    },
     {"lyrics": "Imagine all the people living life in peace", "answer": "Imagine"},
     {"lyrics": "Hey Jude, don't make it bad", "answer": "Hey Jude"},
 ]
@@ -622,7 +631,18 @@ PICTIONARY_WORDS = [
 ]
 
 # ==================== PETS ====================
-PETS = ["🐶 Dog", "🐱 Cat", "🐰 Rabbit", "🐹 Hamster", "🐦 Bird", "🐠 Fish", "🐢 Turtle", "🦎 Lizard", "🐷 Pig", "🐸 Frog"]
+PETS = [
+    "🐶 Dog",
+    "🐱 Cat",
+    "🐰 Rabbit",
+    "🐹 Hamster",
+    "🐦 Bird",
+    "🐠 Fish",
+    "🐢 Turtle",
+    "🦎 Lizard",
+    "🐷 Pig",
+    "🐸 Frog",
+]
 
 # ==================== COLLECTIBLE ITEMS ====================
 ITEMS = [
