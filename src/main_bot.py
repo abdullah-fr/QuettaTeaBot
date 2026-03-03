@@ -1125,7 +1125,7 @@ async def on_message(message):
                 title="👋 Welcome to Quetta Tea Corner!",
                 description=(
                     "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Your name/nickname\n• Your age\n• Your gender\n"
+                    "**Tell us about:**\n• Invited By\n• Your name/nickname\n• Your age\n• Your gender\n"
                     "• Your country/city\n• Your interests/hobbies\n\n"
                     "Once a moderator reviews your intro, you'll get the **Verified** role "
                     "and full access to the server! ☕"
@@ -1320,7 +1320,7 @@ async def on_ready():
                 title="👋 Welcome to Quetta Tea Corner!",
                 description=(
                     "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Your name/nickname\n• Your age\n• Your gender\n"
+                    "**Tell us about:**\n• Invited By\n• Your name/nickname\n• Your age\n• Your gender\n"
                     "• Your country/city\n• Your interests/hobbies\n\n"
                     "Once a moderator reviews your intro, you'll get the **Verified** role "
                     "and full access to the server! ☕"
