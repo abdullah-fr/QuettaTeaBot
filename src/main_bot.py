@@ -1317,6 +1317,90 @@ async def checkroles(ctx):
     await ctx.send(embed=embed)
 
 
+# ==================== WELCOME VERIFIED MEMBER ====================
+@bot.command()
+@commands.has_permissions(manage_roles=True)
+async def welcome(ctx, member: discord.Member):
+    """Send welcome message for newly verified member - Usage: !welcome @member"""
+    # Check if member has verified role
+    verified_role = discord.utils.get(ctx.guild.roles, name="✔️Verified")
+
+    if not verified_role:
+        await ctx.send("❌ Verified role not found!")
+        return
+
+    if verified_role not in member.roles:
+        await ctx.send(f"❌ {member.mention} doesn't have the Verified role yet!")
+        return
+
+    # Send welcome message in general channel
+    general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
+    self_roles_channel = discord.utils.get(ctx.guild.text_channels, name="self-roles")
+
+    if general_channel:
+        # Create the welcome message with proper channel mention
+        if self_roles_channel:
+            welcome_message = (
+                f"🎉 Welcome {member.mention} to {ctx.guild.name}! 🎉\n"
+                f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
+            )
+        else:
+            welcome_message = (
+                f"🎉 Welcome {member.mention} to {ctx.guild.name}! 🎉\n"
+                f"Hop over to #self-roles to grab your roles and join the fun!"
+            )
+
+        await general_channel.send(welcome_message)
+        await ctx.send(f"✅ Welcome message sent for {member.mention}!")
+        print(f"✅ Manual welcome message sent for {member.name}")
+    else:
+        await ctx.send("❌ General channel not found!")
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def checkintents(ctx):
+    """Check if bot has required intents enabled"""
+    intents_status = []
+    intents_status.append(f"{'✅' if bot.intents.members else '❌'} Members Intent: {bot.intents.members}")
+    intents_status.append(f"{'✅' if bot.intents.guilds else '❌'} Guilds Intent: {bot.intents.guilds}")
+    intents_status.append(f"{'✅' if bot.intents.message_content else '❌'} Message Content: {bot.intents.message_content}")
+
+    embed = discord.Embed(
+        title="🔍 Bot Intents Status",
+        description="\n".join(intents_status),
+        color=discord.Color.green() if bot.intents.members else discord.Color.red()
+    )
+
+    if not bot.intents.members:
+        embed.add_field(
+            name="⚠️ Members Intent Disabled",
+            value="You need to enable 'Server Members Intent' in Discord Developer Portal:\n"
+                  "1. Go to https://discord.com/developers/applications\n"
+                  "2. Select your bot\n"
+                  "3. Go to 'Bot' section\n"
+                  "4. Enable 'Server Members Intent' under Privileged Gateway Intents\n"
+                  "5. Save and restart the bot",
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="✅ All Good",
+            value="The on_member_update event should work. If it's not triggering, try restarting the bot.",
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
+
+    embed = discord.Embed(
+        title="🔍 Server Roles Debug",
+        description=f"**All roles in this server:**\n{roles_text}",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed)
+
+
 # ==================== STUDY TIMER (POMODORO) ====================
 @bot.command()
 async def pomodoro(ctx, minutes: int = 25):
