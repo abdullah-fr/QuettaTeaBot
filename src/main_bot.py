@@ -912,6 +912,33 @@ async def on_member_join(member):
             await channel.send(embed=embed)
 
 
+@bot.event
+async def on_member_remove(member):
+    """Track when members leave the server"""
+    print(f"⚠️ {member.name} ({member.id}) left the server")
+    print(f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}")
+    print(f"   Joined at: {member.joined_at}")
+    print(f"   Account created: {member.created_at}")
+
+    # Check if they had verified role
+    verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
+    if verified_role and verified_role in member.roles:
+        print(f"   ⚠️ WARNING: This member had the Verified role!")
+
+        # Log to a channel if you want
+        logs_channel = discord.utils.get(member.guild.text_channels, name="logs")
+        if logs_channel:
+            embed = discord.Embed(
+                title="⚠️ Verified Member Left",
+                description=f"{member.mention} ({member.name}) left the server",
+                color=discord.Color.orange()
+            )
+            embed.add_field(name="User ID", value=member.id, inline=True)
+            embed.add_field(name="Joined", value=f"<t:{int(member.joined_at.timestamp())}:R>", inline=True)
+            embed.add_field(name="Roles", value=", ".join([r.name for r in member.roles if r.name != '@everyone']) or "None", inline=False)
+            await logs_channel.send(embed=embed)
+
+
 # ==================== VERIFIED ROLE WELCOME ====================
 @bot.event
 async def on_member_update(before, after):
