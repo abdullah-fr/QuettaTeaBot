@@ -913,7 +913,10 @@ async def on_member_join(member):
 
 
 # ==================== VERIFIED ROLE WELCOME ====================
+@bot.event
 async def on_member_update(before, after):
+    print(f"🔍 Member update detected: {after.name}")
+
     # Check if the member gained the "Verified" role
     before_roles = set(before.roles)
     after_roles = set(after.roles)
@@ -921,9 +924,14 @@ async def on_member_update(before, after):
     # Find newly added roles
     added_roles = after_roles - before_roles
 
+    if added_roles:
+        print(f"📝 Roles added: {[role.name for role in added_roles]}")
+
     # Check if "Verified" role was added
     verified_role = discord.utils.get(after.guild.roles, name="Verified")
     if verified_role and verified_role in added_roles:
+        print(f"✅ Verified role detected for {after.name}")
+
         # Send welcome message in general channel
         general_channel = discord.utils.get(after.guild.text_channels, name="general")
         self_roles_channel = discord.utils.get(after.guild.text_channels, name="self-roles")
@@ -943,6 +951,8 @@ async def on_member_update(before, after):
 
             await general_channel.send(welcome_message)
             print(f"✅ Sent welcome message for {after.name} in general")
+        else:
+            print(f"❌ General channel not found")
 
 
 # ==================== MESSAGE LOGS ====================
