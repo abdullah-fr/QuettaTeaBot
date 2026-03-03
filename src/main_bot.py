@@ -927,14 +927,27 @@ async def on_member_update(before, after):
     if added_roles:
         print(f"📝 Roles added: {[role.name for role in added_roles]}")
 
-    # Check if "Verified" role was added
-    verified_role = discord.utils.get(after.guild.roles, name="Verified")
+    # Check if "Verified" role was added (case-insensitive)
+    verified_role = None
+    for role in after.guild.roles:
+        if role.name.lower() == "verified":
+            verified_role = role
+            print(f"🔎 Found verified role: {role.name}")
+            break
+
+    if not verified_role:
+        print(f"⚠️ No 'Verified' role found in server roles")
+        print(f"Available roles: {[r.name for r in after.guild.roles]}")
+
     if verified_role and verified_role in added_roles:
         print(f"✅ Verified role detected for {after.name}")
 
         # Send welcome message in general channel
         general_channel = discord.utils.get(after.guild.text_channels, name="general")
         self_roles_channel = discord.utils.get(after.guild.text_channels, name="self-roles")
+
+        print(f"🔎 General channel: {general_channel}")
+        print(f"🔎 Self-roles channel: {self_roles_channel}")
 
         if general_channel:
             # Create the welcome message with proper channel mention
@@ -953,6 +966,7 @@ async def on_member_update(before, after):
             print(f"✅ Sent welcome message for {after.name} in general")
         else:
             print(f"❌ General channel not found")
+            print(f"Available channels: {[c.name for c in after.guild.text_channels]}")
 
 
 # ==================== MESSAGE LOGS ====================
@@ -1285,6 +1299,22 @@ async def rekhta(ctx):
     poetry = random.choice(URDU_POETRY)
     embed = discord.Embed(
         title="📜 Urdu Poetry", description=poetry, color=discord.Color.gold()
+    )
+    await ctx.send(embed=embed)
+
+
+# ==================== DEBUG COMMAND ====================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def checkroles(ctx):
+    """Debug command to check all server roles"""
+    roles_list = [f"• {role.name} (ID: {role.id})" for role in ctx.guild.roles]
+    roles_text = "\n".join(roles_list)
+
+    embed = discord.Embed(
+        title="🔍 Server Roles Debug",
+        description=f"**All roles in this server:**\n{roles_text}",
+        color=discord.Color.blue()
     )
     await ctx.send(embed=embed)
 
