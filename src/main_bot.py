@@ -913,6 +913,7 @@ async def on_member_join(member):
 
 
 # ==================== VERIFIED ROLE WELCOME ====================
+@bot.event
 async def on_member_update(before, after):
     print(f"🔍 Member update detected: {after.name}")
 
