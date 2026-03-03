@@ -912,6 +912,39 @@ async def on_member_join(member):
             await channel.send(embed=embed)
 
 
+# ==================== VERIFIED ROLE WELCOME ====================
+async def on_member_update(before, after):
+    # Check if the member gained the "Verified" role
+    before_roles = set(before.roles)
+    after_roles = set(after.roles)
+
+    # Find newly added roles
+    added_roles = after_roles - before_roles
+
+    # Check if "Verified" role was added
+    verified_role = discord.utils.get(after.guild.roles, name="Verified")
+    if verified_role and verified_role in added_roles:
+        # Send welcome message in general channel
+        general_channel = discord.utils.get(after.guild.text_channels, name="general")
+        self_roles_channel = discord.utils.get(after.guild.text_channels, name="self-roles")
+
+        if general_channel:
+            # Create the welcome message with proper channel mention
+            if self_roles_channel:
+                welcome_message = (
+                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
+                    f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
+                )
+            else:
+                welcome_message = (
+                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
+                    f"Hop over to #self-roles to grab your roles and join the fun!"
+                )
+
+            await general_channel.send(welcome_message)
+            print(f"✅ Sent welcome message for {after.name} in general")
+
+
 # ==================== MESSAGE LOGS ====================
 @bot.event
 async def on_message_delete(message):
