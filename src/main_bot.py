@@ -913,7 +913,6 @@ async def on_member_join(member):
 
 
 # ==================== VERIFIED ROLE WELCOME ====================
-@bot.event
 async def on_member_update(before, after):
     print(f"🔍 Member update detected: {after.name}")
 
@@ -927,17 +926,16 @@ async def on_member_update(before, after):
     if added_roles:
         print(f"📝 Roles added: {[role.name for role in added_roles]}")
 
-    # Check if "Verified" role was added (case-insensitive)
+    # Check if "✔️Verified" role was added (with checkmark emoji)
     verified_role = None
     for role in after.guild.roles:
-        if role.name.lower() == "verified":
+        if role.name == "✔️Verified":
             verified_role = role
             print(f"🔎 Found verified role: {role.name}")
             break
 
     if not verified_role:
-        print(f"⚠️ No 'Verified' role found in server roles")
-        print(f"Available roles: {[r.name for r in after.guild.roles]}")
+        print(f"⚠️ No '✔️Verified' role found in server roles")
 
     if verified_role and verified_role in added_roles:
         print(f"✅ Verified role detected for {after.name}")
