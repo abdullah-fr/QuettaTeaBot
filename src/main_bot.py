@@ -1393,14 +1393,6 @@ async def checkintents(ctx):
     await ctx.send(embed=embed)
 
 
-    embed = discord.Embed(
-        title="🔍 Server Roles Debug",
-        description=f"**All roles in this server:**\n{roles_text}",
-        color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed)
-
-
 # ==================== STUDY TIMER (POMODORO) ====================
 @bot.command()
 async def pomodoro(ctx, minutes: int = 25):
