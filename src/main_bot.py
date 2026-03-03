@@ -1394,6 +1394,49 @@ async def checkintents(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def checkaudit(ctx, limit: int = 10):
+    """Check recent audit log entries - Usage: !checkaudit [limit]"""
+    try:
+        audit_logs = []
+        async for entry in ctx.guild.audit_logs(limit=limit):
+            action_type = str(entry.action).replace('AuditLogAction.', '')
+            audit_logs.append(
+                f"**{action_type}** by {entry.user.mention}\n"
+                f"Target: {entry.target}\n"
+                f"Reason: {entry.reason or 'No reason provided'}\n"
+                f"Time: <t:{int(entry.created_at.timestamp())}:R>\n"
+            )
+
+        if audit_logs:
+            # Split into chunks if too long
+            chunks = []
+            current_chunk = ""
+            for log in audit_logs:
+                if len(current_chunk) + len(log) > 1900:
+                    chunks.append(current_chunk)
+                    current_chunk = log
+                else:
+                    current_chunk += log + "\n"
+            if current_chunk:
+                chunks.append(current_chunk)
+
+            for i, chunk in enumerate(chunks):
+                embed = discord.Embed(
+                    title=f"📋 Recent Audit Log ({i+1}/{len(chunks)})",
+                    description=chunk,
+                    color=discord.Color.blue()
+                )
+                await ctx.send(embed=embed)
+        else:
+            await ctx.send("No audit log entries found.")
+    except discord.Forbidden:
+        await ctx.send("❌ Bot doesn't have permission to view audit logs!")
+    except Exception as e:
+        await ctx.send(f"❌ Error: {str(e)}")
+
+
 # ==================== STUDY TIMER (POMODORO) ====================
 @bot.command()
 async def pomodoro(ctx, minutes: int = 25):
