@@ -986,6 +986,10 @@ tests/performance/test_stress.py::test_scheduler_performance PASSED [100%]
 
 This project is **private** and maintained by [@abdullah-fr](https://github.com/abdullah-fr) as an SQA portfolio project.
 
+## 🚀 Deployment
+
+Currently deployed on Wispbyte with automatic GitHub deployment enabled!
+
 ---
 
 <div align="center">
