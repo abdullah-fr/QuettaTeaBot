@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuettaTeaBot - Available Color Roles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            font-size: 1.2em;
+            margin-bottom: 40px;
+        }
+
+        .category {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .category-title {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .color-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .color-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .color-preview {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .stats {
+            text-align: center;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .stats h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stats p {
+            font-size: 2em;
+            font-weight: bold;
+            color: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Available Color Roles</h1>
+        <p class="subtitle">QuettaTeaBot Discord Server - 37 Colors Available</p>
+
+        <div class="stats">
+            <h2>Total Color Roles</h2>
+            <p>37 Colors</p>
+        </div>
+
+        <!-- Red Tones -->
+        <div class="category">
+            <div class="category-title">
+                🔴 Red Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 0, 0);"></div>
+                    <div class="color-name">Red</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(220, 20, 60);"></div>
+                    <div class="color-name">Crimson</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 0, 127);"></div>
+                    <div class="color-name">Rose</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(128, 0, 0);"></div>
+                    <div class="color-name">Maroon</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Purple Tones -->
+        <div class="category">
+            <div class="category-title">
+                💜 Purple Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(230, 190, 255);"></div>
+                    <div class="color-name">Lavender</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(138, 43, 226);"></div>
+                    <div class="color-name">Violet</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(147, 112, 219);"></div>
+                    <div class="color-name">Plum</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(75, 0, 130);"></div>
+                    <div class="color-name">Indigo</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blue Tones -->
+        <div class="category">
+            <div class="category-title">
+                🔵 Blue Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(0, 0, 255);"></div>
+                    <div class="color-name">Blue</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(15, 82, 186);"></div>
+                    <div class="color-name">Sapphire</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(135, 206, 235);"></div>
+                    <div class="color-name">Sky</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(30, 144, 255);"></div>
+                    <div class="color-name">Azure</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Green Tones -->
+        <div class="category">
+            <div class="category-title">
+                🟢 Green Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(80, 200, 120);"></div>
+                    <div class="color-name">Emerald</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(50, 205, 50);"></div>
+                    <div class="color-name">Lime</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(0, 128, 128);"></div>
+                    <div class="color-name">Teal</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warm Tones -->
+        <div class="category">
+            <div class="category-title">
+                🟡 Warm Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 215, 0);"></div>
+                    <div class="color-name">Gold</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 140, 0);"></div>
+                    <div class="color-name">Tangerine</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Neutral Tones -->
+        <div class="category">
+            <div class="category-title">
+                ⚪ Neutral Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(128, 128, 128);"></div>
+                    <div class="color-name">Gray</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(192, 192, 192);"></div>
+                    <div class="color-name">Silver</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(240, 234, 214);"></div>
+                    <div class="color-name">Pearl</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(245, 245, 220);"></div>
+                    <div class="color-name">Cream</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pastel Tones -->
+        <div class="category">
+            <div class="category-title">
+                🌸 Pastel Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 105, 180);"></div>
+                    <div class="color-name">Pink</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(221, 160, 221);"></div>
+                    <div class="color-name">Lilac</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(173, 216, 230);"></div>
+                    <div class="color-name">Powder</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 239, 213);"></div>
+                    <div class="color-name">Vanilla</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(250, 240, 230);"></div>
+                    <div class="color-name">Linen</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 182, 193);"></div>
+                    <div class="color-name">Blush</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Special Tones -->
+        <div class="category">
+            <div class="category-title">
+                ✨ Special Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 20, 147);"></div>
+                    <div class="color-name">Fuchsia</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vibrant Tones -->
+        <div class="category">
+            <div class="category-title">
+                🔥 Vibrant Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 0, 0);"></div>
+                    <div class="color-name">Fire</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(0, 255, 0);"></div>
+                    <div class="color-name">Neon</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(255, 0, 255);"></div>
+                    <div class="color-name">Plasma</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(0, 255, 255);"></div>
+                    <div class="color-name">Laser</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earth Tones -->
+        <div class="category">
+            <div class="category-title">
+                🌍 Earth Tones
+            </div>
+            <div class="color-grid">
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(160, 82, 45);"></div>
+                    <div class="color-name">Copper</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(210, 180, 140);"></div>
+                    <div class="color-name">Sand</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(205, 133, 63);"></div>
+                    <div class="color-name">Bronze</div>
+                </div>
+                <div class="color-card">
+                    <div class="color-preview" style="background-color: rgb(152, 140, 126);"></div>
+                    <div class="color-name">Taupe</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
