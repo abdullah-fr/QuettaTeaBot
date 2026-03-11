@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ui import View, Button
 import os
@@ -13,18 +14,17 @@ from question_bank import *
 from api_helpers import (
     fetch_trivia_question,
     fetch_riddle,
-    fetch_joke,
     fetch_qotd,
     fetch_wyr,
-    fetch_conversation_starter,
     fetch_compliment,
     fetch_roast,
+    fetch_ai_summary,
 )
 from ramadan_features import initialize_ramadan_features
 
 load_dotenv()
 
-# Bot setup
+# Bot setup with intents
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -41,13 +41,9 @@ def load_data():
             return json.load(f)
     except:
         return {
-            "daily_streaks": {},
             "pet_system": {},
-            "inventory": {},
             "vc_time": {},
             "trivia_scores": {},
-            "song_guess_scores": {},
-            "last_message_time": {},
         }
 
 
@@ -115,7 +111,8 @@ class ColorRoleButton(Button):
                 f"⚠️ Role {self.color_name} not found!", ephemeral=True
             )
             return
-        current_roles = [r for r in interaction.user.roles if r.name in COLOR_ROLES]
+        current_roles = [
+            r for r in interaction.user.roles if r.name in COLOR_ROLES]
         if current_roles:
             await interaction.user.remove_roles(*current_roles)
         try:
@@ -230,15 +227,12 @@ class NotificationView(View):
 
 
 # ==================== TRIVIA GAME (API - Unlimited) ====================
-# Store active trivia questions
 active_trivias = {}
 
 
 @tasks.loop(hours=24)
 async def daily_trivia():
-    channel = discord.utils.get(
-        bot.guilds[0].text_channels, name="general"
-    )  # Changed to general
+    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
     if channel:
         question = await fetch_trivia_question()
         if not question:
@@ -258,24 +252,18 @@ async def daily_trivia():
         embed.set_footer(text="Reply with your answer! Results in 2 minutes.")
 
         msg = await channel.send(embed=embed)
-
-        # Store trivia data
         active_trivias[msg.id] = {
             "question": question,
             "answers": {},
             "channel": channel,
         }
-
-        # Wait 2 minutes then reveal answer
         await asyncio.sleep(120)
         await reveal_trivia_answer(msg.id)
 
 
-# Wait 24 hours before first run
 @daily_trivia.before_loop
 async def before_daily_trivia():
     await bot.wait_until_ready()
-    # Calculate time until next 9 AM
     now = datetime.now()
     next_run = now.replace(hour=9, minute=0, second=0, microsecond=0)
     if now.hour >= 9:
@@ -284,9 +272,8 @@ async def before_daily_trivia():
     await asyncio.sleep(wait_seconds)
 
 
-@bot.command()
-async def trivia(ctx):
-    """Unlimited trivia from API"""
+@bot.tree.command(name="trivia", description="Get unlimited trivia questions from API")
+async def trivia(interaction: discord.Interaction):
     question = await fetch_trivia_question()
     if not question:
         question = {
@@ -302,23 +289,19 @@ async def trivia(ctx):
         embed.add_field(name=f"Option {i}", value=opt, inline=False)
     embed.set_footer(text="Reply with your answer! Results in 2 minutes.")
 
-    msg = await ctx.send(embed=embed)
-    await ctx.send("`!trivia` - Copy this command", delete_after=20)
+    await interaction.response.send_message(embed=embed)
+    msg = await interaction.original_response()
 
-    # Store trivia data
     active_trivias[msg.id] = {
         "question": question,
         "answers": {},
-        "channel": ctx.channel,
+        "channel": interaction.channel,
     }
-
-    # Wait 2 minutes then reveal answer
     await asyncio.sleep(120)
     await reveal_trivia_answer(msg.id)
 
 
 async def reveal_trivia_answer(trivia_id):
-    """Reveal the correct answer and show who got it right"""
     if trivia_id not in active_trivias:
         return
 
@@ -327,19 +310,16 @@ async def reveal_trivia_answer(trivia_id):
     answers = trivia_data["answers"]
     channel = trivia_data["channel"]
 
-    # Find correct answers
     correct_users = []
     for user_id, answer in answers.items():
         if answer.lower() == question["a"].lower():
             correct_users.append(f"<@{user_id}>")
-            # Award points
             if user_id not in bot_data["trivia_scores"]:
                 bot_data["trivia_scores"][user_id] = 0
             bot_data["trivia_scores"][user_id] += 1
 
     save_data(bot_data)
 
-    # Create results embed
     embed = discord.Embed(
         title="🎯 Trivia Results!",
         description=f"**Correct Answer:** {question['a']}",
@@ -360,48 +340,44 @@ async def reveal_trivia_answer(trivia_id):
     )
 
     await channel.send(embed=embed)
-
-    # Clean up
     del active_trivias[trivia_id]
 
 
 @bot.event
 async def on_message_trivia_answer(message):
-    """Track trivia answers"""
     if message.author.bot:
         return
 
-    # Check if this is a trivia answer
     for trivia_id, trivia_data in active_trivias.items():
         if message.channel == trivia_data["channel"]:
-            # Store the answer
-            trivia_data["answers"][str(message.author.id)] = message.content.strip()
+            trivia_data["answers"][str(
+                message.author.id)] = message.content.strip()
 
 
-@bot.command()
-async def triviascores(ctx):
-    """Show trivia leaderboard - Copy: !triviascores"""
+@bot.tree.command(name="triviascores", description="Show trivia leaderboard")
+async def triviascores(interaction: discord.Interaction):
     scores = bot_data["trivia_scores"]
     if not scores:
-        await ctx.send("No trivia scores yet!")
+        await interaction.response.send_message("No trivia scores yet!")
         return
 
-    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
-    embed = discord.Embed(title="🏆 Trivia Leaderboard", color=discord.Color.gold())
+    sorted_scores = sorted(
+        scores.items(), key=lambda x: x[1], reverse=True)[:10]
+    embed = discord.Embed(title="🏆 Trivia Leaderboard",
+                          color=discord.Color.gold())
 
     for i, (user_id, score) in enumerate(sorted_scores, 1):
         user = await bot.fetch_user(int(user_id))
-        embed.add_field(name=f"{i}. {user.name}", value=f"{score} points", inline=False)
+        embed.add_field(name=f"{i}. {user.name}",
+                        value=f"{score} points", inline=False)
 
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
 # ==================== WOULD YOU RATHER (API - Unlimited) ====================
 @tasks.loop(hours=24)
 async def daily_wyr():
-    channel = discord.utils.get(
-        bot.guilds[0].text_channels, name="general"
-    )  # Changed to general
+    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
     if channel:
         question = await fetch_wyr()
         if not question:
@@ -417,7 +393,6 @@ async def daily_wyr():
         await msg.add_reaction("2️⃣")
 
 
-# Wait before first run
 @daily_wyr.before_loop
 async def before_daily_wyr():
     await bot.wait_until_ready()
@@ -429,9 +404,8 @@ async def before_daily_wyr():
     await asyncio.sleep(wait_seconds)
 
 
-@bot.command()
-async def wyr(ctx):
-    """Unlimited Would You Rather from API"""
+@bot.tree.command(name="wyr", description="Get unlimited Would You Rather questions")
+async def wyr(interaction: discord.Interaction):
     question = await fetch_wyr()
     if not question:
         question = random.choice(WYR_QUESTIONS)
@@ -439,53 +413,19 @@ async def wyr(ctx):
     embed = discord.Embed(
         title="🤔 Would You Rather?", description=question, color=discord.Color.purple()
     )
-    msg = await ctx.send(embed=embed)
-    await ctx.send("`!wyr` - Copy this command", delete_after=20)
+    await interaction.response.send_message(embed=embed)
+    msg = await interaction.original_response()
     await msg.add_reaction("1️⃣")
     await msg.add_reaction("2️⃣")
 
 
-# ==================== GUESS THE SONG ====================
-@bot.command()
-async def guessong(ctx):
-    """Guess the song from lyrics"""
-    song = random.choice(SONGS)
-    embed = discord.Embed(
-        title="🎵 Guess the Song!",
-        description=f"**Lyrics:** {song['lyrics']}",
-        color=discord.Color.green(),
-    )
-    embed.set_footer(text="Reply with the song name!")
-    await ctx.send(embed=embed)
-    await ctx.send("`!guessong` - Copy this command", delete_after=20)
-
-    def check(m):
-        return m.channel == ctx.channel and song["answer"].lower() in m.content.lower()
-
-    try:
-        answer = await bot.wait_for("message", check=check, timeout=30.0)
-        user_id = str(answer.author.id)
-        if user_id not in bot_data["song_guess_scores"]:
-            bot_data["song_guess_scores"][user_id] = 0
-        bot_data["song_guess_scores"][user_id] += 1
-        save_data(bot_data)
-        await ctx.send(
-            f"🎉 {answer.author.mention} got it! The song is **{song['answer']}**"
-        )
-    except asyncio.TimeoutError:
-        await ctx.send(f"⏰ Time's up! The song was: **{song['answer']}**")
-
-
 # ==================== RIDDLES (API - Unlimited) ====================
-# Store active riddles
 active_riddles = {}
 
 
 @tasks.loop(hours=24)
 async def daily_riddle():
-    channel = discord.utils.get(
-        bot.guilds[0].text_channels, name="general"
-    )  # Changed to general
+    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
     if channel:
         riddle = await fetch_riddle()
         if not riddle:
@@ -504,19 +444,16 @@ async def daily_riddle():
             description=riddle["q"],
             color=discord.Color.orange(),
         )
-        embed.set_footer(text="You have 5 minutes to guess! First correct answer wins.")
+        embed.set_footer(
+            text="You have 5 minutes to guess! First correct answer wins.")
 
         msg = await channel.send(embed=embed)
-
-        # Store riddle data
-        active_riddles[msg.id] = {"riddle": riddle, "channel": channel, "solved": False}
-
-        # Wait 5 minutes then reveal if not solved
+        active_riddles[msg.id] = {"riddle": riddle,
+                                  "channel": channel, "solved": False}
         await asyncio.sleep(300)
         await reveal_riddle_answer(msg.id)
 
 
-# Wait before first run
 @daily_riddle.before_loop
 async def before_daily_riddle():
     await bot.wait_until_ready()
@@ -528,9 +465,8 @@ async def before_daily_riddle():
     await asyncio.sleep(wait_seconds)
 
 
-@bot.command()
-async def riddle(ctx):
-    """Unlimited riddles from API - Copy: !riddle"""
+@bot.tree.command(name="riddle", description="Get unlimited riddles from API")
+async def riddle(interaction: discord.Interaction):
     riddle = await fetch_riddle()
     if not riddle:
         riddles_list = [
@@ -542,26 +478,24 @@ async def riddle(ctx):
     embed = discord.Embed(
         title="🤯 Riddle Time!", description=riddle["q"], color=discord.Color.orange()
     )
-    embed.set_footer(text="You have 5 minutes to guess! First correct answer wins.")
+    embed.set_footer(
+        text="You have 5 minutes to guess! First correct answer wins.")
 
-    msg = await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
+    msg = await interaction.original_response()
 
-    # Store riddle data
-    active_riddles[msg.id] = {"riddle": riddle, "channel": ctx.channel, "solved": False}
-
-    # Wait 5 minutes then reveal if not solved
+    active_riddles[msg.id] = {"riddle": riddle,
+                              "channel": interaction.channel, "solved": False}
     await asyncio.sleep(300)
     await reveal_riddle_answer(msg.id)
 
 
 async def reveal_riddle_answer(riddle_id):
-    """Reveal the riddle answer if not solved"""
     if riddle_id not in active_riddles:
         return
 
     riddle_data = active_riddles[riddle_id]
 
-    # Only reveal if not already solved
     if not riddle_data["solved"]:
         riddle = riddle_data["riddle"]
         channel = riddle_data["channel"]
@@ -577,22 +511,18 @@ async def reveal_riddle_answer(riddle_id):
 
         await channel.send(embed=embed)
 
-    # Clean up
     del active_riddles[riddle_id]
 
 
 @bot.event
 async def on_message_riddle_answer(message):
-    """Check riddle answers"""
     if message.author.bot:
         return
 
-    # Check if this is a riddle answer
     for riddle_id, riddle_data in list(active_riddles.items()):
         if message.channel == riddle_data["channel"] and not riddle_data["solved"]:
             riddle = riddle_data["riddle"]
 
-            # Check if answer is correct
             if riddle["a"].lower() in message.content.lower():
                 riddle_data["solved"] = True
 
@@ -606,23 +536,18 @@ async def on_message_riddle_answer(message):
                 )
 
                 await message.channel.send(embed=embed)
-
-                # Clean up immediately
                 del active_riddles[riddle_id]
                 break
 
 
 # ==================== ROAST GENERATOR (Friendly & Unlimited) ====================
-@bot.command()
-async def roast(ctx, member: discord.Member = None):
-    """Unlimited friendly roasts - Copy: !roast @user"""
+@bot.tree.command(name="roast", description="Give someone a friendly roast")
+@app_commands.describe(member="The member to roast (optional)")
+async def roast(interaction: discord.Interaction, member: discord.Member = None):
     if member is None:
-        member = ctx.author
+        member = interaction.user
 
-    # Get friendly roast from API with safety filter
     roast_text = await fetch_roast()
-
-    # If API fails, use our safe fallback list
     if not roast_text:
         roast_text = random.choice(ROASTS)
 
@@ -631,43 +556,12 @@ async def roast(ctx, member: discord.Member = None):
         description=f"{member.mention} {roast_text}",
         color=discord.Color.red(),
     )
-    embed.set_footer(text="")
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
-# ==================== QOTD (FULLY AUTOMATED - API Unlimited) ====================
-@tasks.loop(hours=24)
-async def daily_qotd():
-    """Automatically posts QOTD daily - NO COMMAND NEEDED"""
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if channel:
-        question = await fetch_qotd()
-        if not question:
-            question = random.choice(QOTD_QUESTIONS)
-
-        embed = discord.Embed(
-            title="💭 Question of the Day",
-            description=question,
-            color=discord.Color.teal(),
-        )
-        await channel.send(embed=embed)
-
-
-# Wait before first run
-@daily_qotd.before_loop
-async def before_daily_qotd():
-    await bot.wait_until_ready()
-    now = datetime.now()
-    next_run = now.replace(hour=12, minute=0, second=0, microsecond=0)
-    if now.hour >= 12:
-        next_run += timedelta(days=1)
-    wait_seconds = (next_run - now).total_seconds()
-    await asyncio.sleep(wait_seconds)
-
-
-@bot.command()
-async def qotd(ctx):
-    """Manual QOTD (Unlimited via API) - Copy: !qotd"""
+# ==================== QOTD ====================
+@bot.tree.command(name="qotd", description="Get Question of the Day")
+async def qotd(interaction: discord.Interaction):
     question = await fetch_qotd()
     if not question:
         question = random.choice(QOTD_QUESTIONS)
@@ -675,75 +569,14 @@ async def qotd(ctx):
     embed = discord.Embed(
         title="💭 Question of the Day", description=question, color=discord.Color.teal()
     )
-    await ctx.send(embed=embed)
-
-
-# ==================== CONVERSATION STARTERS (AUTO when chat dead) ====================
-@tasks.loop(minutes=30)
-async def check_dead_chat():
-    """Automatically posts conversation starter if chat is dead for 2 hours"""
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if not channel:
-        return
-
-    channel_id = str(channel.id)
-    current_time = datetime.now()
-
-    # Get last message time
-    try:
-        async for message in channel.history(limit=1):
-            last_msg_time = message.created_at.replace(tzinfo=None)
-            time_diff = (current_time - last_msg_time).total_seconds() / 3600  # hours
-
-            # If chat dead for 2+ hours, post starter
-            if time_diff >= 2:
-                # Check if we already posted recently
-                if channel_id in bot_data["last_message_time"]:
-                    last_bot_post = datetime.fromisoformat(
-                        bot_data["last_message_time"][channel_id]
-                    )
-                    if (current_time - last_bot_post).total_seconds() / 3600 < 3:
-                        return  # Don't spam
-
-                # Post conversation starter
-                starter = await fetch_conversation_starter()
-                if not starter:
-                    starter = random.choice(CONVERSATION_STARTERS)
-
-                embed = discord.Embed(
-                    title="💬 Chat seems quiet... Let's talk!",
-                    description=starter,
-                    color=discord.Color.blue(),
-                )
-                await channel.send(embed=embed)
-
-                # Update last post time
-                bot_data["last_message_time"][channel_id] = current_time.isoformat()
-                save_data(bot_data)
-    except:
-        pass
-
-
-@bot.command()
-async def starter(ctx):
-    """Manual conversation starter (Unlimited via API) - Copy: !starter"""
-    starter = await fetch_conversation_starter()
-    if not starter:
-        starter = random.choice(CONVERSATION_STARTERS)
-
-    embed = discord.Embed(
-        title="💬 Conversation Starter", description=starter, color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
 # ==================== COMPLIMENT GENERATOR (AUTOMATED DAILY) ====================
 @tasks.loop(hours=24)
 async def daily_compliment():
-    """Automatically posts random compliment daily - NO COMMAND NEEDED"""
     channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
     if channel:
-        # Pick a random online member
         online_members = [
             m
             for m in channel.guild.members
@@ -764,7 +597,6 @@ async def daily_compliment():
             await channel.send(embed=embed)
 
 
-# Wait before first run
 @daily_compliment.before_loop
 async def before_daily_compliment():
     await bot.wait_until_ready()
@@ -776,11 +608,11 @@ async def before_daily_compliment():
     await asyncio.sleep(wait_seconds)
 
 
-@bot.command()
-async def compliment(ctx, member: discord.Member = None):
-    """Give someone a compliment (Unlimited via API) - Copy: !compliment @user"""
+@bot.tree.command(name="compliment", description="Give someone a compliment")
+@app_commands.describe(member="The member to compliment (optional)")
+async def compliment(interaction: discord.Interaction, member: discord.Member = None):
     if member is None:
-        member = ctx.author
+        member = interaction.user
 
     compliment_text = await fetch_compliment()
     if not compliment_text:
@@ -791,234 +623,16 @@ async def compliment(ctx, member: discord.Member = None):
         description=f"{member.mention} {compliment_text}",
         color=discord.Color.pink(),
     )
-    await ctx.send(embed=embed)
-
-
-# ==================== CHAT GAMES ====================
-@bot.command()
-async def firsttype(ctx):
-    """First to type wins! - Copy: !firsttype"""
-    word = random.choice(["PIZZA", "DISCORD", "GAMING", "COFFEE", "MUSIC"])
-    embed = discord.Embed(
-        title="⚡ First to Type Wins!",
-        description=f"Type: **{word}**",
-        color=discord.Color.gold(),
-    )
-    await ctx.send(embed=embed)
-
-    def check(m):
-        return m.channel == ctx.channel and m.content.upper() == word
-
-    try:
-        winner = await bot.wait_for("message", check=check, timeout=15.0)
-        await ctx.send(f"🏆 {winner.author.mention} wins!")
-    except asyncio.TimeoutError:
-        await ctx.send("⏰ Nobody won!")
-
-
-# ==================== DAILY STREAKS ====================
-@bot.command()
-async def daily(ctx):
-    """Claim your daily reward - Copy: !daily"""
-    user_id = str(ctx.author.id)
-    today = datetime.now().date().isoformat()
-
-    if user_id not in bot_data["daily_streaks"]:
-        bot_data["daily_streaks"][user_id] = {"last_claim": today, "streak": 1}
-    else:
-        last_claim = datetime.fromisoformat(
-            bot_data["daily_streaks"][user_id]["last_claim"]
-        ).date()
-        today_date = datetime.now().date()
-
-        if last_claim == today_date:
-            await ctx.send("❌ You already claimed your daily reward today!")
-            return
-        elif (today_date - last_claim).days == 1:
-            bot_data["daily_streaks"][user_id]["streak"] += 1
-        else:
-            bot_data["daily_streaks"][user_id]["streak"] = 1
-
-        bot_data["daily_streaks"][user_id]["last_claim"] = today
-
-    save_data(bot_data)
-    streak = bot_data["daily_streaks"][user_id]["streak"]
-
-    embed = discord.Embed(
-        title="🎁 Daily Reward Claimed!",
-        description=f"Current streak: **{streak} days** 🔥",
-        color=discord.Color.gold(),
-    )
-    await ctx.send(embed=embed)
-
-
-@bot.command()
-async def streak(ctx):
-    """Check your daily streak - Copy: !streak"""
-    user_id = str(ctx.author.id)
-    if user_id in bot_data["daily_streaks"]:
-        streak = bot_data["daily_streaks"][user_id]["streak"]
-        await ctx.send(f"🔥 Your current streak: **{streak} days**")
-    else:
-        await ctx.send("You don't have a streak yet! Use `!daily` to start.")
-
-
-# ==================== MILESTONE CELEBRATIONS ====================
-@bot.event
-async def on_member_join(member):
-    # Auto-assign Unverified role
-    unverified_role = discord.utils.get(member.guild.roles, name="Unverified")
-    if unverified_role:
-        await member.add_roles(unverified_role)
-        print(f"✅ Assigned Unverified role to {member.name}")
-
-    # Check for milestones
-    guild = member.guild
-    member_count = guild.member_count
-
-    milestones = [50, 100, 200, 500, 1000]
-    if member_count in milestones:
-        channel = discord.utils.get(guild.text_channels, name="general")
-        if channel:
-            embed = discord.Embed(
-                title="🎉 MILESTONE REACHED!",
-                description=f"We just hit **{member_count} members**! 🎊",
-                color=discord.Color.gold(),
-            )
-            await channel.send(embed=embed)
-
-
-@bot.event
-async def on_member_remove(member):
-    """Track when members leave the server"""
-    print(f"⚠️ {member.name} ({member.id}) left the server")
-    print(f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}")
-    print(f"   Joined at: {member.joined_at}")
-    print(f"   Account created: {member.created_at}")
-
-    # Check if they had verified role
-    verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
-    if verified_role and verified_role in member.roles:
-        print(f"   ⚠️ WARNING: This member had the Verified role!")
-
-        # Log to a channel if you want
-        logs_channel = discord.utils.get(member.guild.text_channels, name="logs")
-        if logs_channel:
-            embed = discord.Embed(
-                title="⚠️ Verified Member Left",
-                description=f"{member.mention} ({member.name}) left the server",
-                color=discord.Color.orange()
-            )
-            embed.add_field(name="User ID", value=member.id, inline=True)
-            embed.add_field(name="Joined", value=f"<t:{int(member.joined_at.timestamp())}:R>", inline=True)
-            embed.add_field(name="Roles", value=", ".join([r.name for r in member.roles if r.name != '@everyone']) or "None", inline=False)
-            await logs_channel.send(embed=embed)
-
-
-# ==================== VERIFIED ROLE WELCOME ====================
-@bot.event
-async def on_member_update(before, after):
-    print(f"🔍 Member update detected: {after.name}")
-
-    # Check if the member gained the "Verified" role
-    before_roles = set(before.roles)
-    after_roles = set(after.roles)
-
-    # Find newly added roles
-    added_roles = after_roles - before_roles
-
-    if added_roles:
-        print(f"📝 Roles added: {[role.name for role in added_roles]}")
-
-    # Check if "✔️Verified" role was added (with checkmark emoji)
-    verified_role = None
-    for role in after.guild.roles:
-        if role.name == "✔️Verified":
-            verified_role = role
-            print(f"🔎 Found verified role: {role.name}")
-            break
-
-    if not verified_role:
-        print(f"⚠️ No '✔️Verified' role found in server roles")
-
-    if verified_role and verified_role in added_roles:
-        print(f"✅ Verified role detected for {after.name}")
-
-        # Send welcome message in general channel
-        general_channel = discord.utils.get(after.guild.text_channels, name="general")
-        self_roles_channel = discord.utils.get(after.guild.text_channels, name="self-roles")
-
-        print(f"🔎 General channel: {general_channel}")
-        print(f"🔎 Self-roles channel: {self_roles_channel}")
-
-        if general_channel:
-            # Create the welcome message with proper channel mention
-            if self_roles_channel:
-                welcome_message = (
-                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
-                    f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
-                )
-            else:
-                welcome_message = (
-                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
-                    f"Hop over to #self-roles to grab your roles and join the fun!"
-                )
-
-            await general_channel.send(welcome_message)
-            print(f"✅ Sent welcome message for {after.name} in general")
-        else:
-            print(f"❌ General channel not found")
-            print(f"Available channels: {[c.name for c in after.guild.text_channels]}")
-
-
-# ==================== MESSAGE LOGS ====================
-@bot.event
-async def on_message_delete(message):
-    if message.author.bot:
-        return
-
-    logs_channel = discord.utils.get(message.guild.text_channels, name="logs")
-    if logs_channel:
-        # Try to get audit log to see who deleted it
-        deleted_by = "Self-deleted or Unknown"
-        try:
-            await asyncio.sleep(0.5)  # Small delay for audit log to update
-            async for entry in message.guild.audit_logs(
-                limit=5, action=discord.AuditLogAction.message_delete
-            ):
-                # Check if this entry matches our deleted message
-                if (
-                    entry.target.id == message.author.id
-                    and entry.extra.channel.id == message.channel.id
-                    and (
-                        datetime.now() - entry.created_at.replace(tzinfo=None)
-                    ).total_seconds()
-                    < 2
-                ):
-                    deleted_by = entry.user.mention
-                    break
-        except Exception as e:
-            print(f"Error fetching audit log: {e}")
-
-        embed = discord.Embed(
-            title="🗑️ Message Deleted",
-            description=f"**Author:** {message.author.mention}\n**Channel:** {message.channel.mention}\n**Deleted by:** {deleted_by}\n**Content:** {message.content[:1024] if message.content else 'No content'}",
-            color=discord.Color.red(),
-            timestamp=datetime.now(),
-        )
-        await logs_channel.send(embed=embed)
-
-
-# Removed on_message_edit - no longer logging edits
+    await interaction.response.send_message(embed=embed)
 
 
 # ==================== SERVER STATS ====================
-@bot.command()
-async def stats(ctx):
-    """Show server statistics - Copy: !stats"""
-    guild = ctx.guild
+@bot.tree.command(name="stats", description="Show server statistics")
+async def stats(interaction: discord.Interaction):
+    guild = interaction.guild
     total_members = guild.member_count
-    online_members = sum(1 for m in guild.members if m.status != discord.Status.offline)
+    online_members = sum(
+        1 for m in guild.members if m.status != discord.Status.offline)
     text_channels = len(guild.text_channels)
     voice_channels = len(guild.voice_channels)
 
@@ -1031,7 +645,7 @@ async def stats(ctx):
     embed.add_field(name="Voice Channels", value=voice_channels, inline=True)
     embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
 
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 
 # ==================== VOICE TIME TRACKER ====================
@@ -1039,21 +653,17 @@ async def stats(ctx):
 async def on_voice_state_update(member, before, after):
     user_id = str(member.id)
     guild_id = str(member.guild.id)
-
-    # Create per-server tracking key
     server_key = f"{user_id}_{guild_id}"
 
-    # Initialize user data if not exists
     if server_key not in bot_data["vc_time"]:
         bot_data["vc_time"][server_key] = {"total_minutes": 0}
 
-    # Joined VC
     if before.channel is None and after.channel is not None:
         bot_data["vc_time"][server_key]["join_time"] = datetime.now().isoformat()
         save_data(bot_data)
-        print(f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
+        print(
+            f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
 
-    # Left VC
     elif before.channel is not None and after.channel is None:
         if "join_time" in bot_data["vc_time"][server_key]:
             join_time = datetime.fromisoformat(
@@ -1069,34 +679,30 @@ async def on_voice_state_update(member, before, after):
             )
 
 
-@bot.command()
-async def vctime(ctx):
-    """Check your voice chat time in this server - Copy: !vctime"""
-    user_id = str(ctx.author.id)
-    guild_id = str(ctx.guild.id)
-
-    # Create per-server tracking key
+@bot.tree.command(name="vctime", description="Check your voice chat time in this server")
+async def vctime(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    guild_id = str(interaction.guild.id)
     server_key = f"{user_id}_{guild_id}"
 
-    # Initialize if not exists
     if server_key not in bot_data["vc_time"]:
         bot_data["vc_time"][server_key] = {"total_minutes": 0}
         save_data(bot_data)
 
     total_minutes = bot_data["vc_time"][server_key].get("total_minutes", 0)
 
-    # Add current session time if user is currently in VC
     if "join_time" in bot_data["vc_time"][server_key]:
-        join_time = datetime.fromisoformat(bot_data["vc_time"][server_key]["join_time"])
+        join_time = datetime.fromisoformat(
+            bot_data["vc_time"][server_key]["join_time"])
         current_session = (datetime.now() - join_time).total_seconds() / 60
         total_minutes += current_session
 
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
-        await ctx.send(f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{ctx.guild.name}**!")
+        await interaction.response.send_message(f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{interaction.guild.name}**!")
     else:
-        await ctx.send(
+        await interaction.response.send_message(
             "You haven't joined any voice channels in this server yet! Join a VC to start tracking your time."
         )
 
@@ -1155,19 +761,418 @@ class HobbyRoleView(discord.ui.View):
             )
 
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def setuphobbies(ctx):
-    """Setup hobby reaction roles"""
+@bot.tree.command(name="setuphobbies", description="Setup hobby reaction roles (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def setuphobbies(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🎯 Choose Your Hobbies!",
         description="Click the buttons below to get hobby roles",
         color=discord.Color.green(),
     )
-    await ctx.send(embed=embed, view=HobbyRoleView())
+    await interaction.response.send_message(embed=embed, view=HobbyRoleView())
 
 
-# ==================== AUTO-REACTIONS ====================
+# ==================== PET SYSTEM ====================
+@bot.tree.command(name="adopt", description="Adopt a virtual pet")
+async def adopt(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    if user_id in bot_data["pet_system"]:
+        await interaction.response.send_message("You already have a pet!")
+        return
+
+    pet = random.choice(PETS)
+    bot_data["pet_system"][user_id] = {
+        "pet": pet, "hunger": 100, "happiness": 100}
+    save_data(bot_data)
+
+    embed = discord.Embed(
+        title="🎉 Pet Adopted!",
+        description=f"You adopted a {pet}!",
+        color=discord.Color.green(),
+    )
+    await interaction.response.send_message(embed=embed)
+
+
+# ==================== REKHTA POETRY ====================
+@bot.tree.command(name="rekhta", description="Get random Urdu poetry")
+async def rekhta(interaction: discord.Interaction):
+    poetry = random.choice(URDU_POETRY)
+    embed = discord.Embed(
+        title="📜 Urdu Poetry", description=poetry, color=discord.Color.gold()
+    )
+    await interaction.response.send_message(embed=embed)
+
+
+# ==================== POMODORO TIMER ====================
+@bot.tree.command(name="pomodoro", description="Start a Pomodoro study timer")
+@app_commands.describe(minutes="Timer duration in minutes (max 60)")
+async def pomodoro(interaction: discord.Interaction, minutes: int = 25):
+    if minutes > 60:
+        await interaction.response.send_message("Maximum 60 minutes!")
+        return
+
+    await interaction.response.send_message(f"⏰ Pomodoro timer started for {minutes} minutes!")
+    await asyncio.sleep(minutes * 60)
+    await interaction.channel.send(f"{interaction.user.mention} ⏰ Time's up! Take a break! 🎉")
+
+
+# ==================== TLDR COMMAND ====================
+@bot.tree.command(name="tldr", description="Summarize previous messages in the channel")
+@app_commands.describe(count="Number of messages to summarize (50, 100, 200, or 500)")
+@app_commands.choices(count=[
+    app_commands.Choice(name="50 messages", value=50),
+    app_commands.Choice(name="100 messages", value=100),
+    app_commands.Choice(name="200 messages", value=200),
+    app_commands.Choice(name="500 messages", value=500),
+])
+async def tldr(interaction: discord.Interaction, count: int):
+    await interaction.response.defer()
+
+    try:
+        messages = []
+
+        # Collect messages
+        async for message in interaction.channel.history(limit=count):
+            if not message.author.bot and message.content:
+                timestamp = message.created_at.strftime("%H:%M")
+                author_name = message.author.display_name
+                content = message.content
+                messages.append(f"[{timestamp}] {author_name}: {content}")
+
+        messages.reverse()
+
+        if not messages:
+            await interaction.followup.send("No messages found to summarize!")
+            return
+
+        # Prepare text for AI (limit to avoid token limits)
+        messages_text = "\n".join(messages[:200])  # Max 200 messages for AI
+
+        # Try to get AI summary
+        ai_summary = await fetch_ai_summary(messages_text)
+
+        if ai_summary:
+            # AI generated summary
+            embed = discord.Embed(
+                title="📝 Channel Summary",
+                description=ai_summary,
+                color=discord.Color.blue()
+            )
+            embed.set_footer(
+                text=f"AI-generated summary of {len(messages)} messages | Powered by Groq")
+            await interaction.followup.send(embed=embed)
+        else:
+            # Fallback to basic summary
+            summary = "**Summary of the Conversation 💬**\n\n"
+            summary += f"**Total messages:** {len(messages)}\n\n"
+
+            # Show participants
+            authors = list(set([msg.split("]")[1].split(":")[0].strip()
+                           for msg in messages if "]" in msg and ":" in msg]))
+            summary += f"**Participants:** {', '.join(authors[:10])}\n\n"
+
+            # Show sample messages
+            summary += "**Sample messages:**\n"
+            sample_count = min(10, len(messages))
+            step = max(1, len(messages) // sample_count)
+            for i in range(0, len(messages), step):
+                if i < len(messages):
+                    msg_preview = messages[i][:200]
+                    summary += f"{msg_preview}\n"
+
+            summary += f"\n⚠️ **Note:** Set GROQ_API_KEY environment variable for AI-powered summaries!\n"
+            summary += "Get free API key from: https://console.groq.com/keys"
+
+            if len(summary) > 4000:
+                summary = summary[:3997] + "..."
+
+            embed = discord.Embed(
+                title="📝 Channel Summary",
+                description=summary,
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text=f"Analyzed {len(messages)} messages")
+            await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error creating summary: {str(e)}")
+
+
+# ==================== ADMIN COMMANDS ====================
+@bot.tree.command(name="checkroles", description="Debug command to check all server roles (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def checkroles(interaction: discord.Interaction):
+    roles_list = [
+        f"• {role.name} (ID: {role.id})" for role in interaction.guild.roles]
+    roles_text = "\n".join(roles_list)
+
+    embed = discord.Embed(
+        title="🔍 Server Roles Debug",
+        description=f"**All roles in this server:**\n{roles_text}",
+        color=discord.Color.blue()
+    )
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="welcome", description="Send welcome message for newly verified member (Mod only)")
+@app_commands.describe(member="The member to welcome")
+@app_commands.checks.has_permissions(manage_roles=True)
+async def welcome(interaction: discord.Interaction, member: discord.Member):
+    verified_role = discord.utils.get(
+        interaction.guild.roles, name="✔️Verified")
+
+    if not verified_role:
+        await interaction.response.send_message("❌ Verified role not found!")
+        return
+
+    if verified_role not in member.roles:
+        await interaction.response.send_message(f"❌ {member.mention} doesn't have the Verified role yet!")
+        return
+
+    general_channel = discord.utils.get(
+        interaction.guild.text_channels, name="general")
+    self_roles_channel = discord.utils.get(
+        interaction.guild.text_channels, name="self-roles")
+
+    if general_channel:
+        if self_roles_channel:
+            welcome_message = (
+                f"🎉 Welcome {member.mention} to {interaction.guild.name}! 🎉\n"
+                f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
+            )
+        else:
+            welcome_message = (
+                f"🎉 Welcome {member.mention} to {interaction.guild.name}! 🎉\n"
+                f"Hop over to #self-roles to grab your roles and join the fun!"
+            )
+
+        await general_channel.send(welcome_message)
+        await interaction.response.send_message(f"✅ Welcome message sent for {member.mention}!")
+        print(f"✅ Manual welcome message sent for {member.name}")
+    else:
+        await interaction.response.send_message("❌ General channel not found!")
+
+
+@bot.tree.command(name="checkintents", description="Check if bot has required intents enabled (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def checkintents(interaction: discord.Interaction):
+    intents_status = []
+    intents_status.append(
+        f"{'✅' if bot.intents.members else '❌'} Members Intent: {bot.intents.members}")
+    intents_status.append(
+        f"{'✅' if bot.intents.guilds else '❌'} Guilds Intent: {bot.intents.guilds}")
+    intents_status.append(
+        f"{'✅' if bot.intents.message_content else '❌'} Message Content: {bot.intents.message_content}")
+
+    embed = discord.Embed(
+        title="🔍 Bot Intents Status",
+        description="\n".join(intents_status),
+        color=discord.Color.green() if bot.intents.members else discord.Color.red()
+    )
+
+    if not bot.intents.members:
+        embed.add_field(
+            name="⚠️ Members Intent Disabled",
+            value="You need to enable 'Server Members Intent' in Discord Developer Portal",
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="✅ All Good",
+            value="The on_member_update event should work. If it's not triggering, try restarting the bot.",
+            inline=False
+        )
+
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="checkaudit", description="Check recent audit log entries (Admin only)")
+@app_commands.describe(limit="Number of entries to show (default 10)")
+@app_commands.checks.has_permissions(administrator=True)
+async def checkaudit(interaction: discord.Interaction, limit: int = 10):
+    await interaction.response.defer()
+
+    try:
+        audit_logs = []
+        async for entry in interaction.guild.audit_logs(limit=limit):
+            action_type = str(entry.action).replace('AuditLogAction.', '')
+            audit_logs.append(
+                f"**{action_type}** by {entry.user.mention}\n"
+                f"Target: {entry.target}\n"
+                f"Time: <t:{int(entry.created_at.timestamp())}:R>\n"
+            )
+
+        if audit_logs:
+            chunks = []
+            current_chunk = ""
+            for log in audit_logs:
+                if len(current_chunk) + len(log) > 1900:
+                    chunks.append(current_chunk)
+                    current_chunk = log
+                else:
+                    current_chunk += log + "\n"
+            if current_chunk:
+                chunks.append(current_chunk)
+
+            for i, chunk in enumerate(chunks):
+                embed = discord.Embed(
+                    title=f"📋 Recent Audit Log ({i+1}/{len(chunks)})",
+                    description=chunk,
+                    color=discord.Color.blue()
+                )
+                if i == 0:
+                    await interaction.followup.send(embed=embed)
+                else:
+                    await interaction.channel.send(embed=embed)
+        else:
+            await interaction.followup.send("No audit log entries found.")
+    except discord.Forbidden:
+        await interaction.followup.send("❌ Bot doesn't have permission to view audit logs!")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}")
+
+
+# ==================== MILESTONE CELEBRATIONS ====================
+@bot.event
+async def on_member_join(member):
+    unverified_role = discord.utils.get(member.guild.roles, name="Unverified")
+    if unverified_role:
+        await member.add_roles(unverified_role)
+        print(f"✅ Assigned Unverified role to {member.name}")
+
+    guild = member.guild
+    member_count = guild.member_count
+
+    milestones = [50, 100, 200, 500, 1000]
+    if member_count in milestones:
+        channel = discord.utils.get(guild.text_channels, name="general")
+        if channel:
+            embed = discord.Embed(
+                title="🎉 MILESTONE REACHED!",
+                description=f"We just hit **{member_count} members**! 🎊",
+                color=discord.Color.gold(),
+            )
+            await channel.send(embed=embed)
+
+
+@bot.event
+async def on_member_remove(member):
+    print(f"⚠️ {member.name} ({member.id}) left the server")
+    print(
+        f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}")
+    print(f"   Joined at: {member.joined_at}")
+    print(f"   Account created: {member.created_at}")
+
+    verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
+    if verified_role and verified_role in member.roles:
+        print(f"   ⚠️ WARNING: This member had the Verified role!")
+
+        logs_channel = discord.utils.get(
+            member.guild.text_channels, name="logs")
+        if logs_channel:
+            embed = discord.Embed(
+                title="⚠️ Verified Member Left",
+                description=f"{member.mention} ({member.name}) left the server",
+                color=discord.Color.orange()
+            )
+            embed.add_field(name="User ID", value=member.id, inline=True)
+            embed.add_field(
+                name="Joined", value=f"<t:{int(member.joined_at.timestamp())}:R>", inline=True)
+            embed.add_field(name="Roles", value=", ".join(
+                [r.name for r in member.roles if r.name != '@everyone']) or "None", inline=False)
+            await logs_channel.send(embed=embed)
+
+
+# ==================== VERIFIED ROLE WELCOME ====================
+@bot.event
+async def on_member_update(before, after):
+    print(f"🔍 Member update detected: {after.name}")
+
+    before_roles = set(before.roles)
+    after_roles = set(after.roles)
+    added_roles = after_roles - before_roles
+
+    if added_roles:
+        print(f"📝 Roles added: {[role.name for role in added_roles]}")
+
+    verified_role = None
+    for role in after.guild.roles:
+        if role.name == "✔️Verified":
+            verified_role = role
+            print(f"🔎 Found verified role: {role.name}")
+            break
+
+    if not verified_role:
+        print(f"⚠️ No '✔️Verified' role found in server roles")
+
+    if verified_role and verified_role in added_roles:
+        print(f"✅ Verified role detected for {after.name}")
+
+        general_channel = discord.utils.get(
+            after.guild.text_channels, name="general")
+        self_roles_channel = discord.utils.get(
+            after.guild.text_channels, name="self-roles")
+
+        print(f"🔎 General channel: {general_channel}")
+        print(f"🔎 Self-roles channel: {self_roles_channel}")
+
+        if general_channel:
+            if self_roles_channel:
+                welcome_message = (
+                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
+                    f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
+                )
+            else:
+                welcome_message = (
+                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
+                    f"Hop over to #self-roles to grab your roles and join the fun!"
+                )
+
+            await general_channel.send(welcome_message)
+            print(f"✅ Sent welcome message for {after.name} in general")
+        else:
+            print(f"❌ General channel not found")
+            print(
+                f"Available channels: {[c.name for c in after.guild.text_channels]}")
+
+
+# ==================== MESSAGE LOGS ====================
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot:
+        return
+
+    logs_channel = discord.utils.get(message.guild.text_channels, name="logs")
+    if logs_channel:
+        deleted_by = "Self-deleted or Unknown"
+        try:
+            await asyncio.sleep(0.5)
+            async for entry in message.guild.audit_logs(
+                limit=5, action=discord.AuditLogAction.message_delete
+            ):
+                if (
+                    entry.target.id == message.author.id
+                    and entry.extra.channel.id == message.channel.id
+                    and (
+                        datetime.now() - entry.created_at.replace(tzinfo=None)
+                    ).total_seconds()
+                    < 2
+                ):
+                    deleted_by = entry.user.mention
+                    break
+        except Exception as e:
+            print(f"Error fetching audit log: {e}")
+
+        embed = discord.Embed(
+            title="🗑️ Message Deleted",
+            description=f"**Author:** {message.author.mention}\n**Channel:** {message.channel.mention}\n**Deleted by:** {deleted_by}\n**Content:** {message.content[:1024] if message.content else 'No content'}",
+            color=discord.Color.red(),
+            timestamp=datetime.now(),
+        )
+        await logs_channel.send(embed=embed)
+
+
+# ==================== AUTO-REACTIONS & STICKY MESSAGE ====================
 @bot.event
 async def on_message(message):
     global sticky_message_id
@@ -1191,7 +1196,8 @@ async def on_message(message):
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
             )
-            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
+            embed.set_footer(
+                text="Be genuine and friendly! We're excited to meet you.")
             new_sticky = await message.channel.send(embed=embed)
             sticky_message_id = new_sticky.id
         except:
@@ -1204,280 +1210,6 @@ async def on_message(message):
     await on_message_riddle_answer(message)
 
     await bot.process_commands(message)
-
-
-# ==================== PET SYSTEM ====================
-@bot.command()
-async def adopt(ctx):
-    """Adopt a virtual pet - Copy: !adopt"""
-    user_id = str(ctx.author.id)
-    if user_id in bot_data["pet_system"]:
-        await ctx.send("You already have a pet! Use `!feedpet` to take care of it.")
-        return
-
-    pet = random.choice(PETS)
-    bot_data["pet_system"][user_id] = {"pet": pet, "hunger": 100, "happiness": 100}
-    save_data(bot_data)
-
-    embed = discord.Embed(
-        title="🎉 Pet Adopted!",
-        description=f"You adopted a {pet}!",
-        color=discord.Color.green(),
-    )
-    await ctx.send(embed=embed)
-
-
-@bot.command()
-async def feedpet(ctx):
-    """Feed your pet - Copy: !feedpet"""
-    user_id = str(ctx.author.id)
-    if user_id not in bot_data["pet_system"]:
-        await ctx.send("You don't have a pet! Use `!adopt` first.")
-        return
-
-    bot_data["pet_system"][user_id]["hunger"] = min(
-        100, bot_data["pet_system"][user_id]["hunger"] + 20
-    )
-    bot_data["pet_system"][user_id]["happiness"] = min(
-        100, bot_data["pet_system"][user_id]["happiness"] + 10
-    )
-    save_data(bot_data)
-
-    pet = bot_data["pet_system"][user_id]["pet"]
-    await ctx.send(f"{pet} has been fed! 🍖")
-
-
-@bot.command()
-async def mypet(ctx):
-    """Check your pet's status - Copy: !mypet"""
-    user_id = str(ctx.author.id)
-    if user_id not in bot_data["pet_system"]:
-        await ctx.send("You don't have a pet! Use `!adopt` first.")
-        return
-
-    pet_data = bot_data["pet_system"][user_id]
-    embed = discord.Embed(title=f"Your {pet_data['pet']}", color=discord.Color.blue())
-    embed.add_field(name="Hunger", value=f"{pet_data['hunger']}%", inline=True)
-    embed.add_field(name="Happiness", value=f"{pet_data['happiness']}%", inline=True)
-    await ctx.send(embed=embed)
-
-
-# ==================== INVENTORY SYSTEM ====================
-@bot.command()
-async def collect(ctx):
-    """Collect a random item - Copy: !collect"""
-    user_id = str(ctx.author.id)
-    if user_id not in bot_data["inventory"]:
-        bot_data["inventory"][user_id] = []
-
-    item = random.choice(ITEMS)
-    bot_data["inventory"][user_id].append(item)
-    save_data(bot_data)
-
-    await ctx.send(f"You collected {item}!")
-
-
-@bot.command()
-async def inventory(ctx):
-    """View your inventory - Copy: !inventory"""
-    user_id = str(ctx.author.id)
-    if user_id not in bot_data["inventory"] or not bot_data["inventory"][user_id]:
-        await ctx.send("Your inventory is empty! Use `!collect` to get items.")
-        return
-
-    items = bot_data["inventory"][user_id]
-    embed = discord.Embed(
-        title="🎒 Your Inventory",
-        description="\n".join(items),
-        color=discord.Color.purple(),
-    )
-    await ctx.send(embed=embed)
-
-
-# ==================== REKHTA POETRY ====================
-@bot.command()
-async def rekhta(ctx):
-    """Get random Urdu poetry - Copy: !rekhta"""
-    poetry = random.choice(URDU_POETRY)
-    embed = discord.Embed(
-        title="📜 Urdu Poetry", description=poetry, color=discord.Color.gold()
-    )
-    await ctx.send(embed=embed)
-
-
-# ==================== DEBUG COMMAND ====================
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def checkroles(ctx):
-    """Debug command to check all server roles"""
-    roles_list = [f"• {role.name} (ID: {role.id})" for role in ctx.guild.roles]
-    roles_text = "\n".join(roles_list)
-
-    embed = discord.Embed(
-        title="🔍 Server Roles Debug",
-        description=f"**All roles in this server:**\n{roles_text}",
-        color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed)
-
-
-# ==================== WELCOME VERIFIED MEMBER ====================
-@bot.command()
-@commands.has_permissions(manage_roles=True)
-async def welcome(ctx, member: discord.Member):
-    """Send welcome message for newly verified member - Usage: !welcome @member"""
-    # Check if member has verified role
-    verified_role = discord.utils.get(ctx.guild.roles, name="✔️Verified")
-
-    if not verified_role:
-        await ctx.send("❌ Verified role not found!")
-        return
-
-    if verified_role not in member.roles:
-        await ctx.send(f"❌ {member.mention} doesn't have the Verified role yet!")
-        return
-
-    # Send welcome message in general channel
-    general_channel = discord.utils.get(ctx.guild.text_channels, name="general")
-    self_roles_channel = discord.utils.get(ctx.guild.text_channels, name="self-roles")
-
-    if general_channel:
-        # Create the welcome message with proper channel mention
-        if self_roles_channel:
-            welcome_message = (
-                f"🎉 Welcome {member.mention} to {ctx.guild.name}! 🎉\n"
-                f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
-            )
-        else:
-            welcome_message = (
-                f"🎉 Welcome {member.mention} to {ctx.guild.name}! 🎉\n"
-                f"Hop over to #self-roles to grab your roles and join the fun!"
-            )
-
-        await general_channel.send(welcome_message)
-        await ctx.send(f"✅ Welcome message sent for {member.mention}!")
-        print(f"✅ Manual welcome message sent for {member.name}")
-    else:
-        await ctx.send("❌ General channel not found!")
-
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def checkintents(ctx):
-    """Check if bot has required intents enabled"""
-    intents_status = []
-    intents_status.append(f"{'✅' if bot.intents.members else '❌'} Members Intent: {bot.intents.members}")
-    intents_status.append(f"{'✅' if bot.intents.guilds else '❌'} Guilds Intent: {bot.intents.guilds}")
-    intents_status.append(f"{'✅' if bot.intents.message_content else '❌'} Message Content: {bot.intents.message_content}")
-
-    embed = discord.Embed(
-        title="🔍 Bot Intents Status",
-        description="\n".join(intents_status),
-        color=discord.Color.green() if bot.intents.members else discord.Color.red()
-    )
-
-    if not bot.intents.members:
-        embed.add_field(
-            name="⚠️ Members Intent Disabled",
-            value="You need to enable 'Server Members Intent' in Discord Developer Portal:\n"
-                  "1. Go to https://discord.com/developers/applications\n"
-                  "2. Select your bot\n"
-                  "3. Go to 'Bot' section\n"
-                  "4. Enable 'Server Members Intent' under Privileged Gateway Intents\n"
-                  "5. Save and restart the bot",
-            inline=False
-        )
-    else:
-        embed.add_field(
-            name="✅ All Good",
-            value="The on_member_update event should work. If it's not triggering, try restarting the bot.",
-            inline=False
-        )
-
-    await ctx.send(embed=embed)
-
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def checkaudit(ctx, limit: int = 10):
-    """Check recent audit log entries - Usage: !checkaudit [limit]"""
-    try:
-        audit_logs = []
-        async for entry in ctx.guild.audit_logs(limit=limit):
-            action_type = str(entry.action).replace('AuditLogAction.', '')
-            audit_logs.append(
-                f"**{action_type}** by {entry.user.mention}\n"
-                f"Target: {entry.target}\n"
-                f"Reason: {entry.reason or 'No reason provided'}\n"
-                f"Time: <t:{int(entry.created_at.timestamp())}:R>\n"
-            )
-
-        if audit_logs:
-            # Split into chunks if too long
-            chunks = []
-            current_chunk = ""
-            for log in audit_logs:
-                if len(current_chunk) + len(log) > 1900:
-                    chunks.append(current_chunk)
-                    current_chunk = log
-                else:
-                    current_chunk += log + "\n"
-            if current_chunk:
-                chunks.append(current_chunk)
-
-            for i, chunk in enumerate(chunks):
-                embed = discord.Embed(
-                    title=f"📋 Recent Audit Log ({i+1}/{len(chunks)})",
-                    description=chunk,
-                    color=discord.Color.blue()
-                )
-                await ctx.send(embed=embed)
-        else:
-            await ctx.send("No audit log entries found.")
-    except discord.Forbidden:
-        await ctx.send("❌ Bot doesn't have permission to view audit logs!")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {str(e)}")
-
-
-# ==================== STUDY TIMER (POMODORO) ====================
-@bot.command()
-async def pomodoro(ctx, minutes: int = 25):
-    """Start a Pomodoro study timer - Copy: !pomodoro 25"""
-    if minutes > 60:
-        await ctx.send("Maximum 60 minutes!")
-        return
-
-    await ctx.send(f"⏰ Pomodoro timer started for {minutes} minutes!")
-    await asyncio.sleep(minutes * 60)
-    await ctx.send(f"{ctx.author.mention} ⏰ Time's up! Take a break! 🎉")
-
-
-# ==================== PICTIONARY GAME ====================
-@bot.command()
-async def pictionary(ctx):
-    """Start a Pictionary game - Copy: !pictionary"""
-    word = random.choice(PICTIONARY_WORDS)
-    embed = discord.Embed(
-        title="🎨 Pictionary!",
-        description=f"Draw: **{word}**\nOthers: Guess what's being drawn!",
-        color=discord.Color.blue(),
-    )
-    await ctx.send(embed=embed)
-
-
-# ==================== BONUS: JOKE COMMAND ====================
-@bot.command()
-async def joke(ctx):
-    """Get unlimited jokes from API - Copy: !joke"""
-    joke_text = await fetch_joke()
-    if not joke_text:
-        joke_text = "Why don't scientists trust atoms? Because they make up everything!"
-
-    embed = discord.Embed(
-        title="😂 Here's a Joke!", description=joke_text, color=discord.Color.gold()
-    )
-    await ctx.send(embed=embed)
 
 
 # ==================== BOT READY ====================
@@ -1497,7 +1229,7 @@ async def on_ready():
     bot.add_view(ColorRoleView3())
     bot.add_view(NotificationView())
     bot.add_view(HobbyRoleView())
-    print("✅ Registered all color role buttons (60 colors)")
+    print("✅ Registered all color role buttons (37 colors)")
     print("✅ Registered notification buttons")
 
     # Setup sticky intro message
@@ -1521,38 +1253,40 @@ async def on_ready():
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
             )
-            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
+            embed.set_footer(
+                text="Be genuine and friendly! We're excited to meet you.")
             sticky_msg = await intro_channel.send(embed=embed)
             sticky_message_id = sticky_msg.id
             print(f"✅ Created sticky intro message")
 
-    # Start all automated daily tasks (only if not already running)
+    # Start all automated daily tasks
     if not daily_trivia.is_running():
         daily_trivia.start()
     if not daily_wyr.is_running():
         daily_wyr.start()
     if not daily_riddle.is_running():
         daily_riddle.start()
-    if not daily_qotd.is_running():
-        daily_qotd.start()
     if not daily_compliment.is_running():
         daily_compliment.start()
-    if not check_dead_chat.is_running():
-        check_dead_chat.start()
 
     # Initialize Ramadan features
     ramadan_bot, ramadan_tasks = initialize_ramadan_features(bot)
+
+    # Sync slash commands with Discord
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} slash commands")
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
 
     print("✅ All automated tasks started!")
     print("   - Daily Trivia (unlimited)")
     print("   - Daily WYR (unlimited)")
     print("   - Daily Riddle (unlimited)")
-    print("   - Daily QOTD (unlimited)")
     print("   - Daily Compliment (unlimited)")
-    print("   - Auto Conversation Starter (when chat dead)")
     print("   - Ramadan Features (Sehri/Iftar reminders, Daily Hadith, Daily Ayat)")
 
-    # Post announcements in channels (checks if already posted)
+    # Post announcements in channels
     await post_channel_announcements()
 
 
@@ -1560,38 +1294,15 @@ async def post_channel_announcements():
     """Post pinned announcements in each channel about new features (only once)"""
     guild = bot.guilds[0]
 
-    # Helper function to check if announcement already exists
     async def announcement_exists(channel, title_keyword):
         try:
-            pins = await channel.pins()
-            for pin in pins:
+            async for pin in channel.pins():
                 if pin.author == bot.user and pin.embeds:
                     if title_keyword.lower() in pin.embeds[0].title.lower():
                         return True
         except:
             pass
         return False
-
-    # Daily-fun channel - REMOVED announcement as requested
-
-    # Music channel
-    music = discord.utils.get(guild.text_channels, name="music")
-    if music and not await announcement_exists(music, "New Features"):
-        embed = discord.Embed(
-            title="🎵 New Features!",
-            description="New music game added!",
-            color=discord.Color.green(),
-        )
-        embed.add_field(
-            name="🎵 Guess the Song",
-            value="• `!guessong` - Guess song from lyrics\n• First to guess wins points!",
-            inline=False,
-        )
-        msg = await music.send(embed=embed)
-        try:
-            await msg.pin()
-        except:
-            pass
 
     # Extras channel
     extras = discord.utils.get(guild.text_channels, name="extras")
@@ -1603,21 +1314,18 @@ async def post_channel_announcements():
         )
         embed.add_field(
             name="🎮 Games & Fun",
-            value="• `!roast @user` - Friendly roasts (unlimited)\n• `!firsttype` - Typing game\n• `!joke` - Random jokes (unlimited)",
+            value="• `/roast @user` - Friendly roasts (unlimited)",
             inline=False,
         )
         embed.add_field(
-            name="🏆 Progress & Rewards",
-            value="• `!daily` - Claim daily reward\n• `!streak` - Check your streak\n• `!vctime` - Voice chat time",
+            name="📊 Stats & Utility",
+            value="• `/vctime` - Voice chat time\n• `/stats` - Server statistics",
             inline=False,
         )
         embed.add_field(
-            name="🐾 Social Features",
-            value="• `!adopt` - Adopt a pet\n• `!feedpet` - Feed your pet\n• `!mypet` - Check pet status\n• `!collect` - Collect items\n• `!inventory` - View inventory",
+            name="🐾 Social",
+            value="• `/adopt` - Adopt a pet",
             inline=False,
-        )
-        embed.add_field(
-            name="📊 Info", value="• `!stats` - Server statistics", inline=False
         )
         msg = await extras.send(embed=embed)
         try:
@@ -1635,17 +1343,12 @@ async def post_channel_announcements():
         )
         embed.add_field(
             name="🤖 Auto-Posted Daily",
-            value="• 💭 **Question of the Day** - Unlimited questions\n• 💝 **Daily Compliment** - Random member gets complimented",
+            value="• 💝 **Daily Compliment** - Random member gets complimented",
             inline=False,
         )
         embed.add_field(
-            name="🎯 Smart Auto-Post",
-            value="• 💬 **Conversation Starter** - Auto-posts when chat is dead for 2+ hours",
-            inline=False,
-        )
-        embed.add_field(
-            name="💬 Manual Commands",
-            value="• `!qotd` - Get QOTD anytime\n• `!compliment @user` - Compliment someone\n• `!starter` - Get conversation starter",
+            name="💬 Commands",
+            value="• `/qotd` - Get Question of the Day\n• `/compliment @user` - Compliment someone\n• `/tldr count` - Summarize previous messages",
             inline=False,
         )
         embed.add_field(
@@ -1669,29 +1372,10 @@ async def post_channel_announcements():
         )
         embed.add_field(
             name="📜 Urdu Poetry",
-            value="• `!rekhta` - Get random Urdu poetry",
+            value="• `/rekhta` - Get random Urdu poetry",
             inline=False,
         )
         msg = await rekhta.send(embed=embed)
-        try:
-            await msg.pin()
-        except:
-            pass
-
-    # Sketch-guess channel
-    sketch = discord.utils.get(guild.text_channels, name="sketch-guess")
-    if sketch:
-        embed = discord.Embed(
-            title="🎨 New Feature!",
-            description="Pictionary game added!",
-            color=discord.Color.blue(),
-        )
-        embed.add_field(
-            name="🎨 Pictionary",
-            value="• `!pictionary` - Start a drawing game\n• One person draws, others guess!",
-            inline=False,
-        )
-        msg = await sketch.send(embed=embed)
         try:
             await msg.pin()
         except:

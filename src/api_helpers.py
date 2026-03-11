@@ -1,6 +1,11 @@
 import aiohttp
 import random
 import html
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 # ==================== TRIVIA API ====================
@@ -195,4 +200,91 @@ async def fetch_roast():
     """Always use our clean, friendly roast list - NO API"""
     # All roast APIs contain inappropriate content
     # We ONLY use our curated clean list from question_bank.py
+    return None
+
+
+# ==================== AI SUMMARIZATION ====================
+async def fetch_ai_summary(messages_text):
+    """Generate conversation summary using Groq (free)"""
+
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        print("⚠️ GROQ_API_KEY not set. Get free key from https://console.groq.com/keys")
+        return None
+
+    return await try_groq_summary(messages_text, groq_key)
+
+
+
+async def try_groq_summary(messages_text, api_key):
+    """Try Groq Llama (free, fast, good quality)"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            print(f"✅ Using Groq Llama: {api_key[:10]}...")
+
+            prompt = f"""You are an AI assistant that summarizes Discord conversations.
+Your task is to analyze the full chat and produce a concise summary explaining what happened.
+First understand the discussion, then write the summary.
+
+Instructions
+• Identify the main participants in the conversation.
+• Determine the main topics or jokes discussed.
+• Mention who said the key messages when relevant.
+• Ignore spam, repeated emojis, or filler messages unless they are part of a joke.
+• Focus on important interactions, funny moments, or disagreements.
+• Capture the overall tone of the conversation such as chaotic, friendly, sarcastic, or serious.
+
+Output Requirements
+• Maximum 100 to 150 words
+• 2 to 3 short paragraphs
+• Mention usernames when describing key messages
+• Write in a casual, natural tone
+• Use a few emojis but not excessively
+
+Output Format
+Summary of the Conversation 💬
+
+Paragraph 1: Explain the main discussion and who started it.
+Paragraph 2: Describe responses, jokes, or reactions from other users.
+Paragraph 3: Briefly mention the overall vibe of the chat.
+
+Conversation:
+{messages_text}
+
+Write the summary:"""
+
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 300
+            }
+
+            print(f"📤 Sending request to Groq...")
+
+            async with session.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                print(f"📥 Groq response: {resp.status}")
+
+                if resp.status == 200:
+                    data = await resp.json()
+                    summary = data["choices"][0]["message"]["content"]
+                    print(f"✅ Groq summary generated!")
+                    return summary
+                else:
+                    error_text = await resp.text()
+                    print(f"❌ Groq error {resp.status}: {error_text}")
+                    return None
+
+    except Exception as e:
+        print(f"❌ Groq error: {e}")
     return None
