@@ -254,8 +254,6 @@ class NotificationView(View):
 active_trivias = {}
 
 
-
-
 @bot.tree.command(name="trivia", description="Get unlimited trivia questions from API")
 async def trivia(interaction: discord.Interaction):
     question = await fetch_trivia_question()
@@ -378,7 +376,6 @@ async def wyr(interaction: discord.Interaction):
 
 # ==================== RIDDLES (API - Unlimited) ====================
 active_riddles = {}
-
 
 
 @bot.tree.command(name="riddle", description="Get unlimited riddles from API")
@@ -1150,9 +1147,6 @@ async def on_ready():
         print(f"✅ Synced {len(synced)} slash commands")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
-
-
-
 
 
 # ==================== RUN BOT ====================
