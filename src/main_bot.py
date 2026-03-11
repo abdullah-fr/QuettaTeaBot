@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 import asyncio
+from pathlib import Path
 
 # Import our modules
 from question_bank import *
@@ -31,23 +32,44 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 sticky_message_id = None
 
 # Data storage
-DATA_FILE = "data/bot_data.json"
+_DEFAULT_DATA_FILE = str(
+    (Path(__file__).resolve().parent.parent / "data" / "bot_data.json")
+)
+DATA_FILE = os.getenv("BOT_DATA_FILE", _DEFAULT_DATA_FILE)
+
+
+def _ensure_data_file():
+    path = Path(DATA_FILE)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(
+            json.dumps(
+                {
+                    "pet_system": {},
+                    "vc_time": {},
+                    "trivia_scores": {},
+                },
+                indent=4,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
 
 def load_data():
+    _ensure_data_file()
     try:
-        with open(DATA_FILE, "r") as f:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    except:
-        return {
-            "pet_system": {},
-            "vc_time": {},
-            "trivia_scores": {},
-        }
+    except (FileNotFoundError, json.JSONDecodeError):
+        _ensure_data_file()
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
 
 
 def save_data(data):
-    with open(DATA_FILE, "w") as f:
+    _ensure_data_file()
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
 
