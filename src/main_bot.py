@@ -1702,9 +1702,9 @@ async def post_channel_announcements():
 
 # ==================== UPDATE COLOR ROLES COMMAND ====================
 @bot.command()
-@commands.has_permissions(administrator=True)
+@commands.is_owner()
 async def updatecolors(ctx):
-    """Send updated color role message (Admin only) - Run once to update"""
+    """Send updated color role message (Owner only) - Run once to update"""
     # Send updated color role messages with 37 colors
     embed1 = discord.Embed(
         title="🎨 Color Roles (1-25)",
