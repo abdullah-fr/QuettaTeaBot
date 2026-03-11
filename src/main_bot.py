@@ -1700,28 +1700,5 @@ async def post_channel_announcements():
     print("✅ Channel announcements posted and pinned!")
 
 
-# ==================== UPDATE COLOR ROLES COMMAND ====================
-@bot.command()
-@commands.is_owner()
-async def updatecolors(ctx):
-    """Send updated color role message (Owner only) - Run once to update"""
-    # Send updated color role messages with 37 colors
-    embed1 = discord.Embed(
-        title="🎨 Color Roles (1-25)",
-        description="Click a button below to get a color role! (37 colors available)",
-        color=discord.Color.purple(),
-    )
-    await ctx.send(embed=embed1, view=ColorRoleView())
-
-    embed2 = discord.Embed(
-        title="🎨 Color Roles (26-37)",
-        description="More color options!",
-        color=discord.Color.purple(),
-    )
-    await ctx.send(embed=embed2, view=ColorRoleView2())
-
-    await ctx.send("✅ Updated color role messages sent!", delete_after=5)
-
-
 # ==================== RUN BOT ====================
 bot.run(os.getenv("DISCORD_TOKEN"))
