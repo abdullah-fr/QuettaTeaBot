@@ -1,11 +1,11 @@
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ui import View, Button
 import os
 import random
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 import asyncio
 
@@ -20,7 +20,6 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
 )
-from ramadan_features import initialize_ramadan_features
 
 load_dotenv()
 
@@ -230,46 +229,6 @@ class NotificationView(View):
 active_trivias = {}
 
 
-@tasks.loop(hours=24)
-async def daily_trivia():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if channel:
-        question = await fetch_trivia_question()
-        if not question:
-            question = {
-                "q": "What is the capital of Pakistan?",
-                "a": "Islamabad",
-                "options": ["Karachi", "Islamabad", "Lahore", "Quetta"],
-            }
-
-        embed = discord.Embed(
-            title="🧠 Daily Trivia!",
-            description=question["q"],
-            color=discord.Color.blue(),
-        )
-        for i, opt in enumerate(question["options"], 1):
-            embed.add_field(name=f"Option {i}", value=opt, inline=False)
-        embed.set_footer(text="Reply with your answer! Results in 2 minutes.")
-
-        msg = await channel.send(embed=embed)
-        active_trivias[msg.id] = {
-            "question": question,
-            "answers": {},
-            "channel": channel,
-        }
-        await asyncio.sleep(120)
-        await reveal_trivia_answer(msg.id)
-
-
-@daily_trivia.before_loop
-async def before_daily_trivia():
-    await bot.wait_until_ready()
-    now = datetime.now()
-    next_run = now.replace(hour=9, minute=0, second=0, microsecond=0)
-    if now.hour >= 9:
-        next_run += timedelta(days=1)
-    wait_seconds = (next_run - now).total_seconds()
-    await asyncio.sleep(wait_seconds)
 
 
 @bot.tree.command(name="trivia", description="Get unlimited trivia questions from API")
@@ -375,34 +334,6 @@ async def triviascores(interaction: discord.Interaction):
 
 
 # ==================== WOULD YOU RATHER (API - Unlimited) ====================
-@tasks.loop(hours=24)
-async def daily_wyr():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if channel:
-        question = await fetch_wyr()
-        if not question:
-            question = random.choice(WYR_QUESTIONS)
-
-        embed = discord.Embed(
-            title="🤔 Would You Rather?",
-            description=question,
-            color=discord.Color.purple(),
-        )
-        msg = await channel.send(embed=embed)
-        await msg.add_reaction("1️⃣")
-        await msg.add_reaction("2️⃣")
-
-
-@daily_wyr.before_loop
-async def before_daily_wyr():
-    await bot.wait_until_ready()
-    now = datetime.now()
-    next_run = now.replace(hour=10, minute=0, second=0, microsecond=0)
-    if now.hour >= 10:
-        next_run += timedelta(days=1)
-    wait_seconds = (next_run - now).total_seconds()
-    await asyncio.sleep(wait_seconds)
-
 
 @bot.tree.command(name="wyr", description="Get unlimited Would You Rather questions")
 async def wyr(interaction: discord.Interaction):
@@ -422,47 +353,6 @@ async def wyr(interaction: discord.Interaction):
 # ==================== RIDDLES (API - Unlimited) ====================
 active_riddles = {}
 
-
-@tasks.loop(hours=24)
-async def daily_riddle():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if channel:
-        riddle = await fetch_riddle()
-        if not riddle:
-            riddles_list = [
-                {"q": "What has keys but no locks?", "a": "keyboard"},
-                {"q": "I speak without a mouth. What am I?", "a": "echo"},
-                {
-                    "q": "The more you take, the more you leave behind.",
-                    "a": "footsteps",
-                },
-            ]
-            riddle = random.choice(riddles_list)
-
-        embed = discord.Embed(
-            title="🤯 Daily Riddle!",
-            description=riddle["q"],
-            color=discord.Color.orange(),
-        )
-        embed.set_footer(
-            text="You have 5 minutes to guess! First correct answer wins.")
-
-        msg = await channel.send(embed=embed)
-        active_riddles[msg.id] = {"riddle": riddle,
-                                  "channel": channel, "solved": False}
-        await asyncio.sleep(300)
-        await reveal_riddle_answer(msg.id)
-
-
-@daily_riddle.before_loop
-async def before_daily_riddle():
-    await bot.wait_until_ready()
-    now = datetime.now()
-    next_run = now.replace(hour=11, minute=0, second=0, microsecond=0)
-    if now.hour >= 11:
-        next_run += timedelta(days=1)
-    wait_seconds = (next_run - now).total_seconds()
-    await asyncio.sleep(wait_seconds)
 
 
 @bot.tree.command(name="riddle", description="Get unlimited riddles from API")
@@ -572,41 +462,7 @@ async def qotd(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 
-# ==================== COMPLIMENT GENERATOR (AUTOMATED DAILY) ====================
-@tasks.loop(hours=24)
-async def daily_compliment():
-    channel = discord.utils.get(bot.guilds[0].text_channels, name="general")
-    if channel:
-        online_members = [
-            m
-            for m in channel.guild.members
-            if m.status != discord.Status.offline and not m.bot
-        ]
-        if online_members:
-            member = random.choice(online_members)
-
-            compliment_text = await fetch_compliment()
-            if not compliment_text:
-                compliment_text = random.choice(COMPLIMENTS)
-
-            embed = discord.Embed(
-                title="💝 Daily Compliment",
-                description=f"{member.mention} {compliment_text}",
-                color=discord.Color.pink(),
-            )
-            await channel.send(embed=embed)
-
-
-@daily_compliment.before_loop
-async def before_daily_compliment():
-    await bot.wait_until_ready()
-    now = datetime.now()
-    next_run = now.replace(hour=14, minute=0, second=0, microsecond=0)
-    if now.hour >= 14:
-        next_run += timedelta(days=1)
-    wait_seconds = (next_run - now).total_seconds()
-    await asyncio.sleep(wait_seconds)
-
+# ==================== COMPLIMENT GENERATOR ====================
 
 @bot.tree.command(name="compliment", description="Give someone a compliment")
 @app_commands.describe(member="The member to compliment (optional)")
@@ -1259,19 +1115,6 @@ async def on_ready():
             sticky_message_id = sticky_msg.id
             print(f"✅ Created sticky intro message")
 
-    # Start all automated daily tasks
-    if not daily_trivia.is_running():
-        daily_trivia.start()
-    if not daily_wyr.is_running():
-        daily_wyr.start()
-    if not daily_riddle.is_running():
-        daily_riddle.start()
-    if not daily_compliment.is_running():
-        daily_compliment.start()
-
-    # Initialize Ramadan features
-    ramadan_bot, ramadan_tasks = initialize_ramadan_features(bot)
-
     # Sync slash commands with Discord
     try:
         synced = await bot.tree.sync()
@@ -1279,109 +1122,8 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
 
-    print("✅ All automated tasks started!")
-    print("   - Daily Trivia (unlimited)")
-    print("   - Daily WYR (unlimited)")
-    print("   - Daily Riddle (unlimited)")
-    print("   - Daily Compliment (unlimited)")
-    print("   - Ramadan Features (Sehri/Iftar reminders, Daily Hadith, Daily Ayat)")
-
-    # Post announcements in channels
-    await post_channel_announcements()
 
 
-async def post_channel_announcements():
-    """Post pinned announcements in each channel about new features (only once)"""
-    guild = bot.guilds[0]
-
-    async def announcement_exists(channel, title_keyword):
-        try:
-            async for pin in channel.pins():
-                if pin.author == bot.user and pin.embeds:
-                    if title_keyword.lower() in pin.embeds[0].title.lower():
-                        return True
-        except:
-            pass
-        return False
-
-    # Extras channel
-    extras = discord.utils.get(guild.text_channels, name="extras")
-    if extras and not await announcement_exists(extras, "New Features"):
-        embed = discord.Embed(
-            title="✨ New Features!",
-            description="Tons of new commands and features!",
-            color=discord.Color.purple(),
-        )
-        embed.add_field(
-            name="🎮 Games & Fun",
-            value="• `/roast @user` - Friendly roasts (unlimited)",
-            inline=False,
-        )
-        embed.add_field(
-            name="📊 Stats & Utility",
-            value="• `/vctime` - Voice chat time\n• `/stats` - Server statistics",
-            inline=False,
-        )
-        embed.add_field(
-            name="🐾 Social",
-            value="• `/adopt` - Adopt a pet",
-            inline=False,
-        )
-        msg = await extras.send(embed=embed)
-        try:
-            await msg.pin()
-        except:
-            pass
-
-    # General channel
-    general = discord.utils.get(guild.text_channels, name="general")
-    if general and not await announcement_exists(general, "Automated Features"):
-        embed = discord.Embed(
-            title="🎉 New Automated Features!",
-            description="This channel now has smart automated engagement!",
-            color=discord.Color.teal(),
-        )
-        embed.add_field(
-            name="🤖 Auto-Posted Daily",
-            value="• 💝 **Daily Compliment** - Random member gets complimented",
-            inline=False,
-        )
-        embed.add_field(
-            name="💬 Commands",
-            value="• `/qotd` - Get Question of the Day\n• `/compliment @user` - Compliment someone\n• `/tldr count` - Summarize previous messages",
-            inline=False,
-        )
-        embed.add_field(
-            name="🎉 Auto Features",
-            value="• Milestone celebrations when we hit member goals!",
-            inline=False,
-        )
-        msg = await general.send(embed=embed)
-        try:
-            await msg.pin()
-        except:
-            pass
-
-    # Rekhta channel
-    rekhta = discord.utils.get(guild.text_channels, name="rekhta")
-    if rekhta and not await announcement_exists(rekhta, "New Feature"):
-        embed = discord.Embed(
-            title="📜 New Feature!",
-            description="Urdu poetry generator added!",
-            color=discord.Color.gold(),
-        )
-        embed.add_field(
-            name="📜 Urdu Poetry",
-            value="• `/rekhta` - Get random Urdu poetry",
-            inline=False,
-        )
-        msg = await rekhta.send(embed=embed)
-        try:
-            await msg.pin()
-        except:
-            pass
-
-    print("✅ Channel announcements posted and pinned!")
 
 
 # ==================== RUN BOT ====================
