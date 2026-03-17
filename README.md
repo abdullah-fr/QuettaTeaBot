@@ -10,7 +10,7 @@
 
 **A comprehensive Software Quality Assurance portfolio demonstrating professional testing practices**
 
-**Discord Bot with 25+ features • 73 automated tests • Full CI/CD pipeline**
+**Discord Bot with 25+ features • 104 automated tests • Full CI/CD pipeline**
 
 [Testing Strategy](#-testing-strategy) • [Test Suite](#-test-suite) • [CI/CD Pipeline](#-cicd-pipeline) • [Quality Metrics](#-quality-metrics)
 
@@ -52,7 +52,7 @@ This project demonstrates professional Software Quality Assurance practices thro
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | 73 |
+| **Total Tests** | 104 |
 | **Test Pass Rate** | 100% |
 | **Test Categories** | 5 (Smoke, Unit, Integration, E2E, Performance) |
 | **CI/CD Pipelines** | 4 (Test, PR Checks, Deploy, Scheduled) |
@@ -756,7 +756,7 @@ ptw tests/ -- -v
 |--------|-------|
 | **Total Commands** | 25+ |
 | **Automated Tasks** | 9 |
-| **Test Coverage** | 73 tests |
+| **Test Coverage** | 104 tests |
 | **Lines of Code** | 3,000+ |
 | **Supported Cities** | 8 |
 | **Color Roles** | 60 |
@@ -830,7 +830,8 @@ multiple categories:
 
 4. **Configure environment**
    ```bash
-   echo "DISCORD_TOKEN=your_token_here" > .env
+   cp .env.example .env
+   # Edit .env and add your DISCORD_TOKEN
    ```
 
 5. **Run tests**
@@ -862,7 +863,7 @@ QuettaTeaBot/
 │   ├── api_helpers.py      # API integrations
 │   └── question_bank.py    # Static content
 │
-├── tests/                   # Test suite (73 tests)
+├── tests/                   # Test suite (104 tests)
 │   ├── core/               # Test infrastructure
 │   │   └── base_test.py   # Base test class
 │   ├── test_smoke.py       # 11 smoke tests
@@ -881,6 +882,7 @@ QuettaTeaBot/
 ├── data/
 │   └── bot_data.json       # Persistent data
 │
+├── .env.example           # Environment variable template
 ├── pytest.ini              # Test configuration
 ├── requirements.txt        # Dependencies
 ├── Procfile               # Railway deployment
@@ -967,7 +969,7 @@ rootdir: /Users/abdullah/Desktop/QuettaTeaBot
 configfile: pytest.ini
 testpaths: tests
 plugins: asyncio-1.3.0
-collected 73 items
+collected 104 items
 
 tests/test_smoke.py::test_project_structure_exists PASSED      [  1%]
 tests/test_smoke.py::test_source_files_exist PASSED            [  2%]
@@ -975,10 +977,10 @@ tests/test_smoke.py::test_bot_data_json_valid PASSED           [  4%]
 ...
 tests/performance/test_stress.py::test_scheduler_performance PASSED [100%]
 
-========================= 73 passed in 28.45s ==========================
+========================= 104 passed in 28.45s ==========================
 ```
 
-**Result**: ✅ All 73 tests passing
+**Result**: ✅ All 104 tests passing
 
 ---
 

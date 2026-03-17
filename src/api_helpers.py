@@ -1,4 +1,5 @@
 import aiohttp
+import json
 import random
 import html
 import os
@@ -38,7 +39,7 @@ async def fetch_riddle():
     """Fetch riddles from API Ninjas"""
     try:
         async with aiohttp.ClientSession() as session:
-            headers = {"X-Api-Key": "YOUR_API_KEY"}
+            headers = {"X-Api-Key": os.getenv("API_NINJAS_KEY", "")}
             async with session.get(
                 "https://api.api-ninjas.com/v1/riddles", headers=headers
             ) as resp:
@@ -142,8 +143,6 @@ async def fetch_conversation_starter():
             ) as resp:
                 if resp.status == 200:
                     text = await resp.text()
-                    import json
-
                     data = json.loads(text)
                     if "slip" in data:
                         return f"Let's talk about: {data['slip']['advice']}"
