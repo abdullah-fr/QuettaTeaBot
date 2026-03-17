@@ -39,6 +39,7 @@ DATA_FILE = os.getenv("BOT_DATA_FILE", _DEFAULT_DATA_FILE)
 
 
 def _ensure_data_file():
+    """Create the data file with default structure if it does not exist."""
     path = Path(DATA_FILE)
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
@@ -57,6 +58,7 @@ def _ensure_data_file():
 
 
 def load_data():
+    """Load bot data from the JSON file, creating it if necessary."""
     _ensure_data_file()
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -68,6 +70,7 @@ def load_data():
 
 
 def save_data(data):
+    """Persist bot data to the JSON file."""
     _ensure_data_file()
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
@@ -141,9 +144,9 @@ class ColorRoleButton(Button):
             await interaction.response.send_message(
                 f"You have selected **{self.color_name}** ✅", ephemeral=True
             )
-        except:
+        except Exception:
             await interaction.response.send_message(
-                f"⚠️ Error assigning role", ephemeral=True
+                "⚠️ Error assigning role", ephemeral=True
             )
 
 
@@ -283,6 +286,7 @@ async def trivia(interaction: discord.Interaction):
 
 
 async def reveal_trivia_answer(trivia_id):
+    """Reveal the correct answer and award points after the trivia timer expires."""
     if trivia_id not in active_trivias:
         return
 
@@ -403,6 +407,7 @@ async def riddle(interaction: discord.Interaction):
 
 
 async def reveal_riddle_answer(riddle_id):
+    """Reveal the riddle answer if nobody solved it before timeout."""
     if riddle_id not in active_riddles:
         return
 
@@ -529,6 +534,7 @@ async def stats(interaction: discord.Interaction):
 # ==================== VOICE TIME TRACKER ====================
 @bot.event
 async def on_voice_state_update(member, before, after):
+    """Track voice channel join/leave times per user per server."""
     user_id = str(member.id)
     guild_id = str(member.guild.id)
     server_key = f"{user_id}_{guild_id}"
@@ -621,6 +627,7 @@ class HobbyRoleView(discord.ui.View):
         await self.toggle_role(interaction, role)
 
     async def toggle_role(self, interaction, role):
+        """Add or remove a role from the user, toggling its state."""
         if not role:
             await interaction.response.send_message(
                 "❌ Role not found!", ephemeral=True

@@ -4,5 +4,8 @@ nixPkgs = ["python311"]
 [phases.install]
 cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"]
 
+[phases.build]
+cmds = ["python -m py_compile src/main_bot.py", "python -m py_compile src/ramadan_features.py"]
+
 [start]
 cmd = "cd src && python main_bot.py"
