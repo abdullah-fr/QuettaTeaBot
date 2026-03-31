@@ -741,7 +741,7 @@ async def tldr(interaction: discord.Interaction, count: int):
                 color=discord.Color.blue()
             )
             embed.set_footer(
-                text=f"AI-generated summary of {len(messages)} messages | Powered by Groq")
+                text=f"AI-generated summary of {len(messages)} messages | Powered by DeepSeek")
             await interaction.followup.send(embed=embed)
         else:
             # Fallback to basic summary
@@ -762,8 +762,8 @@ async def tldr(interaction: discord.Interaction, count: int):
                     msg_preview = messages[i][:200]
                     summary += f"{msg_preview}\n"
 
-            summary += f"\n⚠️ **Note:** Set GROQ_API_KEY environment variable for AI-powered summaries!\n"
-            summary += "Get free API key from: https://console.groq.com/keys"
+            summary += f"\n⚠️ **Note:** Set DEEPSEEK_API_KEY environment variable for AI-powered summaries!\n"
+            summary += "Get free API key from: https://platform.deepseek.com/api_keys"
 
             if len(summary) > 4000:
                 summary = summary[:3997] + "..."

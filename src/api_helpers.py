@@ -204,53 +204,36 @@ async def fetch_roast():
 
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text):
-    """Generate conversation summary using Groq (free)"""
+    """Generate conversation summary using DeepSeek (free)"""
 
-    groq_key = os.getenv("GROQ_API_KEY")
-    if not groq_key:
-        print("⚠️ GROQ_API_KEY not set. Get free key from https://console.groq.com/keys")
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    if not deepseek_key:
+        print("⚠️ DEEPSEEK_API_KEY not set. Get free key from https://platform.deepseek.com/api_keys")
         return None
 
-    return await try_groq_summary(messages_text, groq_key)
+    return await try_deepseek_summary(messages_text, deepseek_key)
 
 
-
-async def try_groq_summary(messages_text, api_key):
-    """Try Groq Llama (free, fast, good quality)"""
+async def try_deepseek_summary(messages_text, api_key):
+    """Try DeepSeek (free, fast, good quality)"""
     try:
         async with aiohttp.ClientSession() as session:
-            print(f"✅ Using Groq Llama: {api_key[:10]}...")
+            print(f"✅ Using DeepSeek: {api_key[:10]}...")
 
-            prompt = f"""You are an AI assistant that summarizes Discord conversations.
-Your task is to analyze the full chat and produce a concise summary explaining what happened.
-First understand the discussion, then write the summary.
+            prompt = f"""Summarize the following Discord conversation.
 
-Instructions
-• Identify the main participants in the conversation.
-• Determine the main topics or jokes discussed.
-• Mention who said the key messages when relevant.
-• Ignore spam, repeated emojis, or filler messages unless they are part of a joke.
-• Focus on important interactions, funny moments, or disagreements.
-• Capture the overall tone of the conversation such as chaotic, friendly, sarcastic, or serious.
-
-Output Requirements
-• Maximum 100 to 150 words
-• 2 to 3 short paragraphs
-• Mention usernames when describing key messages
-• Write in a casual, natural tone
-• Use a few emojis but not excessively
-
-Output Format
-Summary of the Conversation 💬
-
-Paragraph 1: Explain the main discussion and who started it.
-Paragraph 2: Describe responses, jokes, or reactions from other users.
-Paragraph 3: Briefly mention the overall vibe of the chat.
+Rules:
+- 100 to 150 words max
+- 2 to 3 short paragraphs
+- Mention usernames when describing key moments
+- Skip spam, repeated emojis, and filler messages
+- Highlight funny moments, debates, or notable interactions
+- Capture the overall vibe (e.g. chaotic, chill, sarcastic)
+- Use a casual tone with a few relevant emojis
+- Do NOT include a title or heading — start directly with the summary
 
 Conversation:
-{messages_text}
-
-Write the summary:"""
+{messages_text}"""
 
             headers = {
                 "Authorization": f"Bearer {api_key}",
@@ -258,32 +241,43 @@ Write the summary:"""
             }
 
             payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,
-                "max_tokens": 300
+                "model": "deepseek-chat",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a Discord conversation summarizer. "
+                            "Your summaries are casual, accurate, and concise. "
+                            "Always mention key usernames. Never add filler or repeat yourself. "
+                            "Output only the summary — no preamble, no meta-commentary."
+                        )
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.6,
+                "max_tokens": 350
             }
 
-            print(f"📤 Sending request to Groq...")
+            print(f"📤 Sending request to DeepSeek...")
 
             async with session.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+                "https://api.deepseek.com/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
-                print(f"📥 Groq response: {resp.status}")
+                print(f"📥 DeepSeek response: {resp.status}")
 
                 if resp.status == 200:
                     data = await resp.json()
                     summary = data["choices"][0]["message"]["content"]
-                    print(f"✅ Groq summary generated!")
+                    print(f"✅ DeepSeek summary generated!")
                     return summary
                 else:
                     error_text = await resp.text()
-                    print(f"❌ Groq error {resp.status}: {error_text}")
+                    print(f"❌ DeepSeek error {resp.status}: {error_text}")
                     return None
 
     except Exception as e:
-        print(f"❌ Groq error: {e}")
+        print(f"❌ DeepSeek error: {e}")
     return None
