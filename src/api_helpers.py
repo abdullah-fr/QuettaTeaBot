@@ -3,10 +3,11 @@ import json
 import random
 import html
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 
 # ==================== TRIVIA API ====================

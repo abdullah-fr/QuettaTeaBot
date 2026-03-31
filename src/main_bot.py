@@ -22,7 +22,7 @@ from api_helpers import (
     fetch_ai_summary,
 )
 
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 # Bot setup with intents
 intents = discord.Intents.all()
