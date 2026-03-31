@@ -204,23 +204,25 @@ async def fetch_roast():
 
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text):
-    """Generate conversation summary using DeepSeek (free)"""
+    """Generate conversation summary using Google Gemini (free)"""
 
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-    if not deepseek_key:
-        print("⚠️ DEEPSEEK_API_KEY not set. Get free key from https://platform.deepseek.com/api_keys")
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        print("⚠️ GEMINI_API_KEY not set. Get free key from https://aistudio.google.com/app/apikey")
         return None
 
-    return await try_deepseek_summary(messages_text, deepseek_key)
+    return await try_gemini_summary(messages_text, gemini_key)
 
 
-async def try_deepseek_summary(messages_text, api_key):
-    """Try DeepSeek (free, fast, good quality)"""
+async def try_gemini_summary(messages_text, api_key):
+    """Try Google Gemini (free tier, 1500 req/day)"""
     try:
         async with aiohttp.ClientSession() as session:
-            print(f"✅ Using DeepSeek: {api_key[:10]}...")
+            print(f"✅ Using Gemini: {api_key[:10]}...")
 
-            prompt = f"""Summarize the following Discord conversation.
+            prompt = f"""You are a Discord conversation summarizer. Your summaries are casual, accurate, and concise. Always mention key usernames. Output only the summary — no preamble, no title, no meta-commentary.
+
+Summarize the following Discord conversation.
 
 Rules:
 - 100 to 150 words max
@@ -230,54 +232,40 @@ Rules:
 - Highlight funny moments, debates, or notable interactions
 - Capture the overall vibe (e.g. chaotic, chill, sarcastic)
 - Use a casual tone with a few relevant emojis
-- Do NOT include a title or heading — start directly with the summary
+- Start directly with the summary, no heading
 
 Conversation:
 {messages_text}"""
 
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-
             payload = {
-                "model": "deepseek-chat",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a Discord conversation summarizer. "
-                            "Your summaries are casual, accurate, and concise. "
-                            "Always mention key usernames. Never add filler or repeat yourself. "
-                            "Output only the summary — no preamble, no meta-commentary."
-                        )
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.6,
-                "max_tokens": 350
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.6,
+                    "maxOutputTokens": 350
+                }
             }
 
-            print(f"📤 Sending request to DeepSeek...")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+
+            print(f"📤 Sending request to Gemini...")
 
             async with session.post(
-                "https://api.deepseek.com/chat/completions",
-                headers=headers,
+                url,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
-                print(f"📥 DeepSeek response: {resp.status}")
+                print(f"📥 Gemini response: {resp.status}")
 
                 if resp.status == 200:
                     data = await resp.json()
-                    summary = data["choices"][0]["message"]["content"]
-                    print(f"✅ DeepSeek summary generated!")
+                    summary = data["candidates"][0]["content"]["parts"][0]["text"]
+                    print(f"✅ Gemini summary generated!")
                     return summary
                 else:
                     error_text = await resp.text()
-                    print(f"❌ DeepSeek error {resp.status}: {error_text}")
+                    print(f"❌ Gemini error {resp.status}: {error_text}")
                     return None
 
     except Exception as e:
-        print(f"❌ DeepSeek error: {e}")
+        print(f"❌ Gemini error: {e}")
     return None
