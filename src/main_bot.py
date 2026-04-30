@@ -10,8 +10,17 @@ from dotenv import load_dotenv
 import asyncio
 from pathlib import Path
 
-# Load opus library for voice audio encoding
-discord.opus.load_opus("/usr/local/lib/libopus.0.dylib")
+# Load opus library for voice audio encoding (path differs by OS)
+import ctypes.util as _ctypes_util
+_opus_lib = (
+    _ctypes_util.find_library("opus")
+    or "/usr/local/lib/libopus.0.dylib"  # macOS fallback
+)
+if not discord.opus.is_loaded():
+    try:
+        discord.opus.load_opus(_opus_lib)
+    except Exception:
+        pass  # will raise OpusNotLoaded at runtime if truly missing
 
 # Import our modules
 from question_bank import *

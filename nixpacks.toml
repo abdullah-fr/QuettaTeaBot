@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "ffmpeg", "nodejs"]
+nixPkgs = ["python312", "ffmpeg", "libopus"]
 
 [phases.install]
 cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"]
