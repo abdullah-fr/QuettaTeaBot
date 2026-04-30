@@ -770,6 +770,7 @@ multiple categories:
 - Trivia game with global leaderboard
 - Daily riddles with timer
 - Would You Rather polls
+- Music playback from YouTube links or song search
 - Song guessing game
 - Speed typing competition
 - Pictionary drawing game
@@ -792,6 +793,17 @@ multiple categories:
 - Interactive button-based color selection
 - Reaction-based hobby assignment
 
+### Music Commands
+- `/connect` and `/disconnect` - join or leave your voice channel
+- `/play` - play a song by YouTube link or search text, with song-name autocomplete
+- `/search` - search YouTube and pick a result from a dropdown
+- `/queue`, `/skip`, `/pause`, `/resume`, `/stop`, `/leave` - playback controls
+
+If YouTube asks for sign-in verification, add `YTDLP_COOKIES_BROWSER=brave`
+to `.env` for local testing, or use `YTDLP_COOKIES_FILE=/path/to/cookies.txt`
+on a hosted bot. YouTube may also require a JavaScript runtime; the bot defaults
+to `YTDLP_JS_RUNTIME=node`.
+
 ### Automated Tasks (9 scheduled features)
 - Daily trivia, riddles, QOTD
 - Ramadan reminders and content
@@ -807,6 +819,7 @@ multiple categories:
 
 - Python 3.10, 3.11, or 3.12
 - Discord Bot Token
+- FFmpeg for music playback
 - Git
 
 ### Setup
@@ -859,6 +872,7 @@ QuettaTeaBot/
 │
 ├── src/                     # Source code (3,000+ lines)
 │   ├── main_bot.py         # Main bot logic
+│   ├── music_player.py     # YouTube music playback and queue controls
 │   ├── ramadan_features.py # Ramadan module
 │   ├── api_helpers.py      # API integrations
 │   └── question_bank.py    # Static content
