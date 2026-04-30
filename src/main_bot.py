@@ -21,12 +21,14 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
 )
+from music_player import setup_music_commands
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 # Bot setup with intents
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
+_music_controller = setup_music_commands(bot)
 
 # Store sticky message ID
 sticky_message_id = None
