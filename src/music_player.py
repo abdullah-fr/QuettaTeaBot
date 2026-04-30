@@ -53,6 +53,7 @@ class GuildMusicState:
     current: Optional[Track] = None
     text_channel: Optional[discord.abc.Messageable] = None
     volume: float = 0.5
+    player_view: Optional["MusicPlayerView"] = None
 
     def enqueue(self, track: Track) -> int:
         if len(self.queue) >= MAX_QUEUE_SIZE:
@@ -333,6 +334,83 @@ async def autocomplete_song_names(
     return choices[:AUTOCOMPLETE_LIMIT]
 
 
+class MusicPlayerView(discord.ui.View):
+    """Persistent player controls attached to the Now Playing message."""
+
+    def __init__(self, controller: "MusicController", guild: discord.Guild):
+        super().__init__(timeout=None)
+        self.controller = controller
+        self.guild = guild
+        self.message: Optional[discord.Message] = None
+
+    def _vc(self) -> Optional[discord.VoiceClient]:
+        return self.guild.voice_client  # type: ignore
+
+    def _is_paused(self) -> bool:
+        vc = self._vc()
+        return vc is not None and vc.is_paused()
+
+    def _is_playing(self) -> bool:
+        vc = self._vc()
+        return vc is not None and vc.is_playing()
+
+    async def _update_buttons(self) -> None:
+        """Update button labels to reflect current playback state."""
+        pause_btn = discord.utils.get(self.children, custom_id="music_pause")
+        if pause_btn:
+            pause_btn.label = "▶️ Resume" if self._is_paused() else "⏸ Pause"
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
+
+    async def disable_all(self) -> None:
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
+
+    @discord.ui.button(label="⏸ Pause", style=discord.ButtonStyle.primary, custom_id="music_pause")
+    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = self._vc()
+        if not vc:
+            await interaction.response.send_message("Not connected to voice.", ephemeral=True)
+            return
+        if vc.is_paused():
+            vc.resume()
+            button.label = "⏸ Pause"
+        elif vc.is_playing():
+            vc.pause()
+            button.label = "▶️ Resume"
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="⏭ Skip", style=discord.ButtonStyle.secondary, custom_id="music_skip")
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = self._vc()
+        if not vc or (not vc.is_playing() and not vc.is_paused()):
+            await interaction.response.send_message("Nothing is playing.", ephemeral=True)
+            return
+        vc.stop()
+        await interaction.response.send_message("⏭ Skipped.", ephemeral=True)
+
+    @discord.ui.button(label="⏹ Stop", style=discord.ButtonStyle.danger, custom_id="music_stop")
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.guild is None:
+            await interaction.response.send_message("Server only.", ephemeral=True)
+            return
+        state = self.controller.get_state(interaction.guild.id)
+        state.clear()
+        vc = self._vc()
+        if vc and (vc.is_playing() or vc.is_paused()):
+            vc.stop()
+        await self.disable_all()
+        await interaction.response.send_message("⏹ Stopped and queue cleared.", ephemeral=True)
+
+
 class MusicSearchSelect(discord.ui.Select):
     def __init__(
         self,
@@ -538,33 +616,41 @@ class MusicController:
         assert interaction.guild is not None
         state = self.get_state(interaction.guild.id)
         if len(state.queue) >= MAX_QUEUE_SIZE:
-            await interaction.followup.send(
-                "The music queue is full. Try again after a few songs play.",
-                ephemeral=ephemeral,
+            await interaction.edit_original_response(
+                content="The music queue is full. Try again after a few songs play."
             )
             return
 
-        voice_client = await self.ensure_voice_client(
-            interaction, ephemeral=ephemeral, require_ffmpeg=True
+        # Run voice connect and track resolution concurrently for faster response
+        voice_task = asyncio.create_task(
+            self.ensure_voice_client(interaction, ephemeral=ephemeral, require_ffmpeg=True)
         )
-        if not voice_client:
-            return
-
-        try:
-            track = await resolve_track(
+        track_task = asyncio.create_task(
+            resolve_track(
                 query,
                 requested_by=self._requester_name(interaction),
                 requested_by_id=interaction.user.id,
             )
+        )
+
+        try:
+            voice_client, track = await asyncio.gather(voice_task, track_task)
         except MusicError as exc:
-            await interaction.followup.send(str(exc), ephemeral=ephemeral)
+            voice_task.cancel()
+            track_task.cancel()
+            await interaction.edit_original_response(content=str(exc))
+            return
+
+        if not voice_client:
+            track_task.cancel()
             return
 
         state.text_channel = interaction.channel
         position = state.enqueue(track)
 
-        await interaction.followup.send(
-            embed=self.build_added_embed(track, position), ephemeral=ephemeral
+        await interaction.edit_original_response(
+            content=None,
+            embed=self.build_added_embed(track, position),
         )
         await self.start_if_idle(interaction.guild)
 
@@ -619,7 +705,16 @@ class MusicController:
         voice_client.play(source, after=after_play)
 
         if state.text_channel:
-            await state.text_channel.send(embed=self.build_now_playing_embed(track))
+            # Disable previous player view if any
+            if state.player_view:
+                await state.player_view.disable_all()
+
+            view = MusicPlayerView(self, guild)
+            msg = await state.text_channel.send(
+                embed=self.build_now_playing_embed(track), view=view
+            )
+            view.message = msg
+            state.player_view = view
 
     async def after_track(self, guild: discord.Guild, error: Optional[Exception]) -> None:
         state = self.get_state(guild.id)
@@ -694,7 +789,9 @@ def setup_music_commands(bot) -> MusicController:
     @app_commands.describe(song="Song name or YouTube URL")
     @app_commands.autocomplete(song=autocomplete_song_names)
     async def play(interaction: discord.Interaction, song: str):
-        await interaction.response.defer(thinking=True)
+        await interaction.response.send_message(
+            f"🔍 Searching for **{truncate_text(song, 60)}**...", ephemeral=False
+        )
         await controller.play_query_from_interaction(interaction, song)
 
     @bot.tree.command(name="search", description="Search YouTube songs and choose one")

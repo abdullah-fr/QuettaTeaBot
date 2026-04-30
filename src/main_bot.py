@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 import asyncio
 from pathlib import Path
 
+# Load opus library for voice audio encoding
+discord.opus.load_opus("/usr/local/lib/libopus.0.dylib")
+
 # Import our modules
 from question_bank import *
 from api_helpers import (
