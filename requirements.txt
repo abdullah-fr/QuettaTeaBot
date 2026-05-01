@@ -1,5 +1,5 @@
 discord.py==2.7.1
-davey==0.1.5
+dave.py>=0.1.2
 python-dotenv>=1.2.2
 aiohttp>=3.13.5
 pytz>=2026.1.post1
