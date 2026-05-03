@@ -1078,10 +1078,14 @@ async def on_message(message):
     # Auto-create a public thread so members can discuss without typing
     if message.channel.name == "freedom-of-speech" and message.author.bot:
         try:
-            # Extract a short preview for the thread name
-            content = message.embeds[0].description if message.embeds else message.content
-            preview = (content[:50].strip() + "...") if content and len(content) > 50 else (content or "Confession")
-            thread_name = f"💬 {preview}"
+            # Extract confession number from embed title e.g. "Anonymous Confession (#1322)"
+            thread_name = "💬 Confession"
+            if message.embeds:
+                title = message.embeds[0].title or ""
+                import re
+                match = re.search(r"#(\d+)", title)
+                if match:
+                    thread_name = f"💬 Confession #{match.group(1)}"
             await message.create_thread(
                 name=thread_name,
                 auto_archive_duration=1440,  # archive after 24h of inactivity
