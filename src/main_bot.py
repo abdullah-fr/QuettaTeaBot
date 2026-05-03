@@ -1073,6 +1073,22 @@ async def on_message_delete(message):
 async def on_message(message):
     global sticky_message_id
 
+    # ==================== AUTO CONFESSION THREADS ====================
+    # Confessions bot posts anonymously in freedom-of-speech channel
+    # Auto-create a public thread so members can discuss without typing
+    if message.channel.name == "freedom-of-speech" and message.author.bot:
+        try:
+            # Extract a short preview for the thread name
+            content = message.embeds[0].description if message.embeds else message.content
+            preview = (content[:50].strip() + "...") if content and len(content) > 50 else (content or "Confession")
+            thread_name = f"💬 {preview}"
+            await message.create_thread(
+                name=thread_name,
+                auto_archive_duration=1440,  # archive after 24h of inactivity
+            )
+        except Exception:
+            pass
+
     if message.author.bot:
         return
 
