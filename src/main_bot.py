@@ -1096,6 +1096,23 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # ==================== AUTO INTRO THREADS ====================
+    # When an unverified member posts their intro, auto-create a thread
+    # so verified members can welcome and discuss without cluttering the channel
+    if message.channel.name == "intro":
+        try:
+            # Use first 50 chars of intro as thread name
+            preview = message.content[:50].strip()
+            if len(message.content) > 50:
+                preview += "..."
+            thread_name = f"👋 {message.author.display_name}'s intro"
+            await message.create_thread(
+                name=thread_name,
+                auto_archive_duration=1440,  # archive after 24h of inactivity
+            )
+        except Exception:
+            pass
+
     # Sticky intro message
     if message.channel.name == "intro" and sticky_message_id:
         try:
