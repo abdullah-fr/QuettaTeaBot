@@ -1122,9 +1122,9 @@ async def on_message(message):
                 title="👋 Welcome to Quetta Tea Corner!",
                 description=(
                     "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Invited By\n• Your name/nickname\n• Your age\n• Your gender\n"
+                    "**Tell us about:\n• Your name/nickname\n• Your age\n• Your gender\n"
                     "• Your country/city\n• Your interests/hobbies\n\n"
-                    "Once a moderator reviews your intro, you'll get the **Verified** role "
+                    "Once a moderator reviews your intro, you'll get the Verified role "
                     "and full access to the server! ☕"
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
@@ -1143,6 +1143,90 @@ async def on_message(message):
     await on_message_riddle_answer(message)
 
     await bot.process_commands(message)
+
+
+# ==================== TOLLPLAZA - JOIN/LEAVE LOGS ====================
+@bot.event
+async def on_member_join(member: discord.Member):
+    channel = discord.utils.get(member.guild.text_channels, name="tollplaza")
+    if not channel:
+        return
+
+    # Try to find who invited this member via audit log
+    inviter = "Unknown"
+    try:
+        async for entry in member.guild.audit_logs(
+            limit=10, action=discord.AuditLogAction.invite_create
+        ):
+            pass  # just warm up the cache
+
+        # Compare invite uses before and after
+        invites_after = await member.guild.invites()
+        cached = getattr(bot, "_invite_cache", {}).get(member.guild.id, [])
+        for invite in invites_after:
+            for cached_invite in cached:
+                if invite.code == cached_invite.code and invite.uses > cached_invite.uses:
+                    inviter = invite.inviter.mention if invite.inviter else "Unknown"
+                    break
+    except Exception:
+        pass
+
+    # Update invite cache
+    try:
+        bot._invite_cache[member.guild.id] = await member.guild.invites()
+    except Exception:
+        pass
+
+    created_at = discord.utils.format_dt(member.created_at, style="R")
+    member_count = member.guild.member_count
+
+    embed = discord.Embed(
+        title="User joined",
+        color=discord.Color.green(),
+    )
+    embed.add_field(name="User", value=f"{member.mention} ( @{member.name} )", inline=False)
+    embed.add_field(name="Invited by", value=inviter, inline=False)
+    embed.add_field(name="Created", value=created_at, inline=False)
+    embed.add_field(name="Members", value=str(member_count), inline=False)
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.timestamp = discord.utils.utcnow()
+
+    await channel.send(embed=embed)
+
+
+@bot.event
+async def on_member_remove(member: discord.Member):
+    channel = discord.utils.get(member.guild.text_channels, name="tollplaza")
+    if not channel:
+        return
+
+    joined = discord.utils.format_dt(member.joined_at, style="R") if member.joined_at else "Unknown"
+    roles = [r.mention for r in member.roles if r.name != "@everyone"]
+    member_count = member.guild.member_count
+
+    embed = discord.Embed(
+        title="User left",
+        color=discord.Color.red(),
+    )
+    embed.add_field(name="User", value=f"{member.mention} ( @{member.name} )", inline=False)
+    embed.add_field(name="Joined", value=joined, inline=False)
+    embed.add_field(name="Roles", value=" ".join(roles) if roles else "None", inline=False)
+    embed.add_field(name="Members", value=str(member_count), inline=False)
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.timestamp = discord.utils.utcnow()
+
+    await channel.send(embed=embed)
+
+
+@bot.event
+async def on_ready_invite_cache():
+    """Cache invites on startup so we can track who invited whom."""
+    bot._invite_cache = {}
+    for guild in bot.guilds:
+        try:
+            bot._invite_cache[guild.id] = await guild.invites()
+        except Exception:
+            pass
 
 
 # ==================== BOT READY ====================
@@ -1179,9 +1263,9 @@ async def on_ready():
                 title="👋 Welcome to Quetta Tea Corner!",
                 description=(
                     "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Invited By\n• Your name/nickname\n• Your age\n• Your gender\n"
+                    "**Tell us about:\n• Your name/nickname\n• Your age\n• Your gender\n"
                     "• Your country/city\n• Your interests/hobbies\n\n"
-                    "Once a moderator reviews your intro, you'll get the **Verified** role "
+                    "Once a moderator reviews your intro, you'll get the Verified role "
                     "and full access to the server! ☕"
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
@@ -1198,6 +1282,25 @@ async def on_ready():
         print(f"✅ Synced {len(synced)} slash commands")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
+
+    # Cache invites for join tracking
+    bot._invite_cache = {}
+    for g in bot.guilds:
+        try:
+            bot._invite_cache[g.id] = await g.invites()
+            print(f"✅ Cached invites for {g.name}")
+        except Exception:
+            pass
+
+
+@bot.event
+async def on_invite_create(invite: discord.Invite):
+    """Keep invite cache up to date when new invites are created."""
+    if invite.guild:
+        try:
+            bot._invite_cache[invite.guild.id] = await invite.guild.invites()
+        except Exception:
+            pass
 
 
 # ==================== RUN BOT ====================
