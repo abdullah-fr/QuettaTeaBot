@@ -1106,8 +1106,12 @@ async def on_message(message):
         if not has_image:
             try:
                 await message.delete()
-                await message.author.send(
-                    "❌ Only images are allowed in **#art-n-clicks**. Text and voice messages are not permitted."
+                await message.channel.send(
+                    f"{message.author.mention} ❌ Only images are allowed in **#art-n-clicks**.\n"
+                    "• Post your photos, art, or screenshots here\n"
+                    "• A discussion thread will be created automatically\n"
+                    "• Text and voice messages are not allowed",
+                    delete_after=8,
                 )
             except Exception:
                 pass
