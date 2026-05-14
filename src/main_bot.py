@@ -817,6 +817,10 @@ async def purge(
 ):
     await interaction.response.defer(ephemeral=True)
 
+    # If message_link is provided and count wasn't explicitly set, default to 100
+    if message_link and count == 10:
+        count = 100
+
     if count < 1 or count > 100:
         await interaction.followup.send("❌ Count must be between 1 and 100.", ephemeral=True)
         return
