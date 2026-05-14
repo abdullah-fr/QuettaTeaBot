@@ -862,6 +862,7 @@ async def purge(
         total_deleted = 0
         remaining = count
         last_message = after_message
+        has_old_messages = False
 
         while remaining > 0:
             batch = min(remaining, 100)
@@ -869,6 +870,7 @@ async def purge(
                 limit=batch,
                 check=msg_filter,
                 after=last_message,
+                bulk=True,  # use bulk delete (only works for msgs < 14 days old)
             )
             total_deleted += len(deleted)
             remaining -= batch
@@ -879,8 +881,9 @@ async def purge(
             "all": "messages", "text": "text messages",
             "image": "images", "voice": "voice messages", "links": "messages with links"
         }
+        note = "\n⚠️ Messages older than 14 days cannot be bulk deleted — those were skipped." if total_deleted < count else ""
         await interaction.followup.send(
-            f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.",
+            f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.{note}",
             ephemeral=True,
         )
     except discord.Forbidden:
@@ -1174,6 +1177,11 @@ async def on_message_delete(message):
 @bot.event
 async def on_message(message):
     global sticky_message_id
+
+    # Ignore DMs — all channel-specific logic below requires a guild channel
+    if not isinstance(message.channel, discord.TextChannel):
+        await bot.process_commands(message)
+        return
 
     # ==================== AUTO CONFESSION THREADS ====================
     # Confessions bot posts anonymously in freedom-of-speech channel
