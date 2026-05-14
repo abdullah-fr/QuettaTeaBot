@@ -870,11 +870,11 @@ async def purge(
         if after_message:
             # Collect messages after the anchor message, then bulk delete
             to_delete = []
-            async for msg in interaction.channel.history(limit=count, after=after_message, oldest_first=False):
+            async for msg in interaction.channel.history(
+                limit=count, after=after_message, oldest_first=True
+            ):
                 if msg_filter(msg):
                     to_delete.append(msg)
-                if len(to_delete) >= count:
-                    break
 
             # Bulk delete in batches of 100
             for i in range(0, len(to_delete), 100):
