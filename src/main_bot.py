@@ -1184,10 +1184,12 @@ async def on_member_join(member: discord.Member):
         title="User joined",
         color=discord.Color.green(),
     )
-    embed.add_field(name="User", value=f"{member.mention} ( @{member.name} )", inline=False)
-    embed.add_field(name="Invited by", value=inviter, inline=False)
-    embed.add_field(name="Created", value=created_at, inline=False)
-    embed.add_field(name="Members", value=str(member_count), inline=False)
+    embed.description = (
+        f"**User:** {member.mention} ( @{member.name} )\n"
+        f"**Invited by:** {inviter}\n"
+        f"**Created:** {created_at}\n"
+        f"**Members:** {member_count}"
+    )
     embed.set_thumbnail(url=member.display_avatar.url)
     embed.timestamp = discord.utils.utcnow()
 
@@ -1208,10 +1210,12 @@ async def on_member_remove(member: discord.Member):
         title="User left",
         color=discord.Color.red(),
     )
-    embed.add_field(name="User", value=f"{member.mention} ( @{member.name} )", inline=False)
-    embed.add_field(name="Joined", value=joined, inline=False)
-    embed.add_field(name="Roles", value=" ".join(roles) if roles else "None", inline=False)
-    embed.add_field(name="Members", value=str(member_count), inline=False)
+    embed.description = (
+        f"**User:** {member.mention} ( @{member.name} )\n"
+        f"**Joined:** {joined}\n"
+        f"**Roles:** {' '.join(roles) if roles else 'None'}\n"
+        f"**Members:** {member_count}"
+    )
     embed.set_thumbnail(url=member.display_avatar.url)
     embed.timestamp = discord.utils.utcnow()
 
