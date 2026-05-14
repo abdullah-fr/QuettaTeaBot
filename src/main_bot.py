@@ -859,10 +859,12 @@ async def purge(
 
     # Purge messages — loop in batches of 100 since Discord limits bulk delete
     try:
+        from datetime import timezone, timedelta
+        two_weeks_ago = discord.utils.utcnow() - timedelta(days=14)
+
         total_deleted = 0
         remaining = count
         last_message = after_message
-        has_old_messages = False
 
         while remaining > 0:
             batch = min(remaining, 100)
@@ -870,22 +872,28 @@ async def purge(
                 limit=batch,
                 check=msg_filter,
                 after=last_message,
-                bulk=True,  # use bulk delete (only works for msgs < 14 days old)
+                bulk=True,
             )
             total_deleted += len(deleted)
             remaining -= batch
             if len(deleted) < batch:
-                break  # no more messages to delete
+                break
 
         filter_label = {
             "all": "messages", "text": "text messages",
             "image": "images", "voice": "voice messages", "links": "messages with links"
         }
-        note = "\n⚠️ Messages older than 14 days cannot be bulk deleted — those were skipped." if total_deleted < count else ""
-        await interaction.followup.send(
-            f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.{note}",
-            ephemeral=True,
-        )
+
+        if total_deleted == 0:
+            await interaction.followup.send(
+                "No messages deleted, make sure the messages aren't over two weeks old.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.followup.send(
+                f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.",
+                ephemeral=True,
+            )
     except discord.Forbidden:
         await interaction.followup.send("❌ I don't have permission to delete messages here.", ephemeral=True)
     except Exception as e:
