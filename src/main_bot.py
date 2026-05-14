@@ -797,7 +797,7 @@ async def tldr(interaction: discord.Interaction, count: int):
 # ==================== ADMIN COMMANDS ====================
 @bot.tree.command(name="purge", description="Bulk delete messages (requires Manage Messages)")
 @app_commands.describe(
-    count="Number of messages to delete (max 100)",
+    count="Input number of messages to search for (max 100)",
     message_link="Delete all messages after this message link (optional)",
     filter="Filter by message type: all, text, image, voice, links",
 )
