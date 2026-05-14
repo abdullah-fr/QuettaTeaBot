@@ -888,13 +888,11 @@ async def purge(
             await interaction.followup.send(
                 "No messages deleted, make sure the messages aren't over two weeks old.",
                 ephemeral=True,
-                delete_after=5,
             )
         else:
             await interaction.followup.send(
                 f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.",
                 ephemeral=True,
-                delete_after=5,
             )
     except discord.Forbidden:
         await interaction.followup.send("❌ I don't have permission to delete messages here.", ephemeral=True)
