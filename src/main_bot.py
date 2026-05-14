@@ -797,7 +797,7 @@ async def tldr(interaction: discord.Interaction, count: int):
 # ==================== ADMIN COMMANDS ====================
 @bot.tree.command(name="purge", description="Bulk delete messages (requires Manage Messages)")
 @app_commands.describe(
-    count="Number of messages to delete (max 500)",
+    count="Number of messages to delete (max 100)",
     message_link="Delete all messages after this message link (optional)",
     filter="Filter by message type: all, text, image, voice, links",
 )
@@ -817,8 +817,8 @@ async def purge(
 ):
     await interaction.response.defer(ephemeral=True)
 
-    if count < 1 or count > 500:
-        await interaction.followup.send("❌ Count must be between 1 and 500.", ephemeral=True)
+    if count < 1 or count > 100:
+        await interaction.followup.send("❌ Count must be between 1 and 100.", ephemeral=True)
         return
 
     # Resolve the anchor message if a link was provided
