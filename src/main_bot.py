@@ -795,6 +795,92 @@ async def tldr(interaction: discord.Interaction, count: int):
 
 
 # ==================== ADMIN COMMANDS ====================
+@bot.tree.command(name="purge", description="Bulk delete messages (requires Manage Messages)")
+@app_commands.describe(
+    count="Number of messages to delete (max 100)",
+    message_link="Delete all messages after this message link (optional)",
+    filter="Filter by message type: all, text, image, voice",
+)
+@app_commands.choices(filter=[
+    app_commands.Choice(name="All messages", value="all"),
+    app_commands.Choice(name="Text only", value="text"),
+    app_commands.Choice(name="Images only", value="image"),
+    app_commands.Choice(name="Voice messages only", value="voice"),
+])
+@app_commands.checks.has_permissions(manage_messages=True)
+async def purge(
+    interaction: discord.Interaction,
+    count: int = 10,
+    message_link: str = None,
+    filter: str = "all",
+):
+    await interaction.response.defer(ephemeral=True)
+
+    if count < 1 or count > 100:
+        await interaction.followup.send("❌ Count must be between 1 and 100.", ephemeral=True)
+        return
+
+    # Resolve the anchor message if a link was provided
+    after_message = None
+    if message_link:
+        try:
+            # Extract message ID from link
+            # Format: https://discord.com/channels/guild_id/channel_id/message_id
+            parts = message_link.rstrip("/").split("/")
+            msg_id = int(parts[-1])
+            after_message = await interaction.channel.fetch_message(msg_id)
+        except Exception:
+            await interaction.followup.send(
+                "❌ Could not find that message. Make sure the link is from this channel.",
+                ephemeral=True,
+            )
+            return
+
+    # Define filter function
+    def msg_filter(msg: discord.Message) -> bool:
+        if filter == "all":
+            return True
+        if filter == "text":
+            return bool(msg.content) and not msg.attachments
+        if filter == "image":
+            return any(
+                a.content_type and a.content_type.startswith("image/")
+                for a in msg.attachments
+            )
+        if filter == "voice":
+            return any(
+                a.content_type and "ogg" in a.content_type
+                for a in msg.attachments
+            )
+        return True
+
+    # Purge messages
+    try:
+        deleted = await interaction.channel.purge(
+            limit=count,
+            check=msg_filter,
+            after=after_message,
+            before=None,
+        )
+        filter_label = {"all": "messages", "text": "text messages", "image": "images", "voice": "voice messages"}
+        await interaction.followup.send(
+            f"✅ Deleted **{len(deleted)}** {filter_label.get(filter, 'messages')}.",
+            ephemeral=True,
+        )
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I don't have permission to delete messages here.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
+
+
+@purge.error
+async def purge_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message(
+            "❌ You need **Manage Messages** permission to use this command.", ephemeral=True
+        )
+
+
 @bot.tree.command(name="checkroles", description="Debug command to check all server roles (Admin only)")
 @app_commands.checks.has_permissions(administrator=True)
 async def checkroles(interaction: discord.Interaction):
