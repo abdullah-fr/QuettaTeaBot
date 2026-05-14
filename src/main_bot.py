@@ -797,15 +797,16 @@ async def tldr(interaction: discord.Interaction, count: int):
 # ==================== ADMIN COMMANDS ====================
 @bot.tree.command(name="purge", description="Bulk delete messages (requires Manage Messages)")
 @app_commands.describe(
-    count="Number of messages to delete (max 100)",
+    count="Number of messages to delete (max 500)",
     message_link="Delete all messages after this message link (optional)",
-    filter="Filter by message type: all, text, image, voice",
+    filter="Filter by message type: all, text, image, voice, links",
 )
 @app_commands.choices(filter=[
     app_commands.Choice(name="All messages", value="all"),
     app_commands.Choice(name="Text only", value="text"),
     app_commands.Choice(name="Images only", value="image"),
     app_commands.Choice(name="Voice messages only", value="voice"),
+    app_commands.Choice(name="Links only", value="links"),
 ])
 @app_commands.checks.has_permissions(manage_messages=True)
 async def purge(
@@ -816,8 +817,8 @@ async def purge(
 ):
     await interaction.response.defer(ephemeral=True)
 
-    if count < 1 or count > 100:
-        await interaction.followup.send("❌ Count must be between 1 and 100.", ephemeral=True)
+    if count < 1 or count > 500:
+        await interaction.followup.send("❌ Count must be between 1 and 500.", ephemeral=True)
         return
 
     # Resolve the anchor message if a link was provided
@@ -852,19 +853,34 @@ async def purge(
                 a.content_type and "ogg" in a.content_type
                 for a in msg.attachments
             )
+        if filter == "links":
+            return bool(msg.content) and ("http://" in msg.content or "https://" in msg.content)
         return True
 
-    # Purge messages
+    # Purge messages — loop in batches of 100 since Discord limits bulk delete
     try:
-        deleted = await interaction.channel.purge(
-            limit=count,
-            check=msg_filter,
-            after=after_message,
-            before=None,
-        )
-        filter_label = {"all": "messages", "text": "text messages", "image": "images", "voice": "voice messages"}
+        total_deleted = 0
+        remaining = count
+        last_message = after_message
+
+        while remaining > 0:
+            batch = min(remaining, 100)
+            deleted = await interaction.channel.purge(
+                limit=batch,
+                check=msg_filter,
+                after=last_message,
+            )
+            total_deleted += len(deleted)
+            remaining -= batch
+            if len(deleted) < batch:
+                break  # no more messages to delete
+
+        filter_label = {
+            "all": "messages", "text": "text messages",
+            "image": "images", "voice": "voice messages", "links": "messages with links"
+        }
         await interaction.followup.send(
-            f"✅ Deleted **{len(deleted)}** {filter_label.get(filter, 'messages')}.",
+            f"✅ Deleted **{total_deleted}** {filter_label.get(filter, 'messages')}.",
             ephemeral=True,
         )
     except discord.Forbidden:
