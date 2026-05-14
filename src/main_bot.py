@@ -1096,6 +1096,33 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # ==================== ART-N-CLICKS: IMAGE ONLY + AUTO THREAD ====================
+    # Delete non-image messages, auto-create thread on images for comments
+    if message.channel.name == "art-n-clicks" and not message.author.bot:
+        has_image = any(
+            a.content_type and a.content_type.startswith("image/")
+            for a in message.attachments
+        )
+        if not has_image:
+            try:
+                await message.delete()
+                await message.author.send(
+                    "❌ Only images are allowed in **#art-n-clicks**. Text and voice messages are not permitted."
+                )
+            except Exception:
+                pass
+            return
+
+        # Image posted — create a thread for comments
+        try:
+            thread_name = f"🎨 {message.author.display_name}'s post"
+            await message.create_thread(
+                name=thread_name,
+                auto_archive_duration=1440,
+            )
+        except Exception:
+            pass
+
     # ==================== AUTO INTRO THREADS ====================
     # When an unverified member posts their intro, auto-create a thread
     # so verified members can welcome and discuss without cluttering the channel
