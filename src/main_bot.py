@@ -1096,6 +1096,35 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # ==================== FOODIE: IMAGE ONLY + AUTO THREAD ====================
+    if message.channel.name == "foodie" and not message.author.bot:
+        has_image = any(
+            a.content_type and a.content_type.startswith("image/")
+            for a in message.attachments
+        )
+        if not has_image:
+            try:
+                await message.delete()
+                await message.channel.send(
+                    f"{message.author.mention} ❌ Only food images are allowed in **#foodie**.\n"
+                    "• Post your food photos here\n"
+                    "• A discussion thread will be created automatically\n"
+                    "• Text and voice messages are not allowed",
+                    delete_after=8,
+                )
+            except Exception:
+                pass
+            return
+
+        try:
+            thread_name = f"🍽️ {message.author.display_name}'s post"
+            await message.create_thread(
+                name=thread_name,
+                auto_archive_duration=1440,
+            )
+        except Exception:
+            pass
+
     # ==================== ART-N-CLICKS: IMAGE ONLY + AUTO THREAD ====================
     # Delete non-image messages, auto-create thread on images for comments
     if message.channel.name == "art-n-clicks" and not message.author.bot:
