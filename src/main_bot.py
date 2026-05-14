@@ -1462,6 +1462,11 @@ async def on_ready():
     try:
         synced = await bot.tree.sync()
         print(f"✅ Synced {len(synced)} slash commands")
+        # Also sync to guild for instant update
+        guild = discord.Object(id=bot.guilds[0].id)
+        bot.tree.copy_global_to(guild=guild)
+        await bot.tree.sync(guild=guild)
+        print(f"✅ Guild sync complete")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
 
