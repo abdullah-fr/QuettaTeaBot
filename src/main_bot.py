@@ -857,27 +857,36 @@ async def purge(
             return bool(msg.content) and ("http://" in msg.content or "https://" in msg.content)
         return True
 
-    # Purge messages — loop in batches of 100 since Discord limits bulk delete
+    # Purge messages
     try:
-        from datetime import timezone, timedelta
-        two_weeks_ago = discord.utils.utcnow() - timedelta(days=14)
+        from datetime import timedelta
 
         total_deleted = 0
-        remaining = count
-        last_message = after_message
 
-        while remaining > 0:
-            batch = min(remaining, 100)
+        if after_message:
+            # Collect messages after the anchor message, then bulk delete
+            to_delete = []
+            async for msg in interaction.channel.history(limit=count, after=after_message, oldest_first=False):
+                if msg_filter(msg):
+                    to_delete.append(msg)
+                if len(to_delete) >= count:
+                    break
+
+            # Bulk delete in batches of 100
+            for i in range(0, len(to_delete), 100):
+                batch = to_delete[i:i+100]
+                try:
+                    await interaction.channel.delete_messages(batch)
+                except Exception:
+                    pass
+            total_deleted = len(to_delete)
+        else:
             deleted = await interaction.channel.purge(
-                limit=batch,
+                limit=count,
                 check=msg_filter,
-                after=last_message,
                 bulk=True,
             )
-            total_deleted += len(deleted)
-            remaining -= batch
-            if len(deleted) < batch:
-                break
+            total_deleted = len(deleted)
 
         filter_label = {
             "all": "messages", "text": "text messages",
