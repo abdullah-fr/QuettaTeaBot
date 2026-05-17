@@ -1202,7 +1202,7 @@ async def on_message(message):
         if bot._dexter_msg_count >= 10:
             bot._dexter_msg_count = 0
             try:
-                await message.reply("Mommy")
+                await message.reply("https://tenor.com/view/dungeong-gif-13362807664297827620")
             except Exception:
                 pass
 
