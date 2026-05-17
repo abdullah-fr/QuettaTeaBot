@@ -1201,6 +1201,18 @@ async def on_message(message):
         except Exception:
             pass
 
+    # ==================== AUDI AUTO-REPLY (every 5th message) ====================
+    if message.author.name == "iidentifyasaudi" and not message.author.bot:
+        if not hasattr(bot, "_audi_msg_count"):
+            bot._audi_msg_count = 0
+        bot._audi_msg_count += 1
+        if bot._audi_msg_count >= 5:
+            bot._audi_msg_count = 0
+            try:
+                await message.reply("bhai bhai bhai")
+            except Exception:
+                pass
+
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):
         await bot.process_commands(message)
