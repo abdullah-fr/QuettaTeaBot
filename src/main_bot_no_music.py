@@ -1186,7 +1186,7 @@ async def on_message(message):
     global sticky_message_id
 
     # ==================== NAAMWAHAB AUTO-REPLY ====================
-    if message.author.name == "naamwahab" and not message.author.bot:
+    if message.author.name == "naamwahab" and not message.author.bot and message.guild:
         try:
             emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
             if emoji:
@@ -1207,7 +1207,7 @@ async def on_message(message):
                 pass
 
     # ==================== COOL AUTO-REPLY ====================
-    if message.author.name == "imsohail_" and not message.author.bot:
+    if message.author.name == "imsohail_" and not message.author.bot and message.guild:
         try:
             emoji = discord.utils.get(message.guild.emojis, name="dzac_core")
             if emoji:
