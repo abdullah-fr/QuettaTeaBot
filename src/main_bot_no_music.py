@@ -1322,6 +1322,13 @@ async def on_message(message):
         except Exception:
             pass
 
+    # ==================== DEXTER AUTO-REPLY ====================
+    if message.author.name == "_notdexter_" and not message.author.bot:
+        try:
+            await message.reply("Mommy")
+        except Exception:
+            pass
+
     # Check trivia answers
     await on_message_trivia_answer(message)
 
