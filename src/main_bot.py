@@ -1187,6 +1187,22 @@ async def on_message_delete(message):
 async def on_message(message):
     global sticky_message_id
 
+    # ==================== NAAMWAHAB AUTO-REPLY ====================
+    if message.author.name == "naamwahab" and not message.author.bot:
+        try:
+            emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
+            if emoji:
+                await message.reply(str(emoji))
+        except Exception:
+            pass
+
+    # ==================== DEXTER AUTO-REPLY ====================
+    if message.author.name == "_notdexter_" and not message.author.bot:
+        try:
+            await message.reply("Mommy")
+        except Exception:
+            pass
+
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):
         await bot.process_commands(message)
@@ -1313,22 +1329,6 @@ async def on_message(message):
             new_sticky = await message.channel.send(embed=embed)
             sticky_message_id = new_sticky.id
         except:
-            pass
-
-    # ==================== NAAMWAHAB AUTO-REPLY ====================
-    if message.author.name == "naamwahab" and not message.author.bot:
-        try:
-            emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
-            if emoji:
-                await message.reply(str(emoji))
-        except Exception:
-            pass
-
-    # ==================== DEXTER AUTO-REPLY ====================
-    if message.author.name == "_notdexter_" and not message.author.bot:
-        try:
-            await message.reply("Mommy")
-        except Exception:
             pass
 
     # Check trivia answers
