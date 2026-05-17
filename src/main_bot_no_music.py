@@ -1208,12 +1208,15 @@ async def on_message(message):
 
     # ==================== COOL AUTO-REPLY ====================
     if message.author.name == "imsohail_" and not message.author.bot and message.guild:
-        try:
-            emoji = discord.utils.get(message.guild.emojis, name="dzac_core")
-            if emoji:
-                await message.reply(str(emoji))
-        except Exception:
-            pass
+        if not hasattr(bot, "_cool_msg_count"):
+            bot._cool_msg_count = 0
+        bot._cool_msg_count += 1
+        if bot._cool_msg_count >= 10:
+            bot._cool_msg_count = 0
+            try:
+                await message.reply("chart nikaal karwe")
+            except Exception:
+                pass
 
     # ==================== AUDI AUTO-REPLY (every 5th message) ====================
     if message.author.name == "iidentifyasaudi" and not message.author.bot:
