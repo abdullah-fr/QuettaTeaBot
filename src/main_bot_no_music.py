@@ -1219,6 +1219,7 @@ async def on_message(message):
                 "take this anti hawas tablets 20 times a day pls 💊",
                 "Esi baat par @Cool Kalma parhlo.",
                 "yaqeen kro farishto ki jooti ka size shahrah e faisal se bara he uska khouf kha lo",
+                "i just checked google emran hashmi dad's generation is in pakistan too he married here too @Cool is related to that tree",
             ]
             reply_text = cool_replies[bot._cool_msg_index % len(cool_replies)]
             bot._cool_msg_index += 1
