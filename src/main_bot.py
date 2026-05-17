@@ -1222,7 +1222,7 @@ async def on_message(message):
         if bot._cool_msg_count >= 10:
             bot._cool_msg_count = 0
             try:
-                await message.reply("chart nikaal karwe")
+                await message.reply("take this anti hawas tablets 20 times a day pls 💊")
                 print(f"✅ Replied to Cool")
             except Exception as e:
                 print(f"❌ Cool reply error: {e}")
