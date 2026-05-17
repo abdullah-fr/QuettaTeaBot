@@ -1192,12 +1192,12 @@ async def on_message(message):
         try:
             emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
             if emoji:
-                await message.reply(str(emoji))
-                print(f"✅ Replied to naamwahab")
+                await message.add_reaction(emoji)
+                print(f"✅ Reacted to naamwahab")
             else:
                 print(f"❌ Emoji terichyenahiraye not found")
         except Exception as e:
-            print(f"❌ naamwahab reply error: {e}")
+            print(f"❌ naamwahab reaction error: {e}")
 
     # ==================== DEXTER AUTO-REPLY (every 10th message) ====================
     if message.author.name == "_notdexter_" and not message.author.bot:

@@ -1190,7 +1190,7 @@ async def on_message(message):
         try:
             emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
             if emoji:
-                await message.reply(str(emoji))
+                await message.add_reaction(emoji)
         except Exception:
             pass
 
