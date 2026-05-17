@@ -1213,17 +1213,26 @@ async def on_message(message):
             except Exception as e:
                 print(f"❌ Dexter reply error: {e}")
 
-    # ==================== COOL AUTO-REPLY (every 10th message) ====================
+    # ==================== COOL AUTO-REPLY (every 5th message, rotating msgs) ====================
     if message.author.name == "imsohail_" and not message.author.bot:
         if not hasattr(bot, "_cool_msg_count"):
             bot._cool_msg_count = 0
+        if not hasattr(bot, "_cool_msg_index"):
+            bot._cool_msg_index = 0
         bot._cool_msg_count += 1
-        print(f"🔢 Cool: {bot._cool_msg_count}/10")
-        if bot._cool_msg_count >= 10:
+        print(f"🔢 Cool: {bot._cool_msg_count}/5")
+        if bot._cool_msg_count >= 5:
             bot._cool_msg_count = 0
+            cool_replies = [
+                "take this anti hawas tablets 20 times a day pls 💊",
+                "Esi baat par @Cool Kalma parhlo.",
+                "yaqeen kro farishto ki jooti ka size shahrah e faisal se bara he uska khouf kha lo",
+            ]
+            reply_text = cool_replies[bot._cool_msg_index % len(cool_replies)]
+            bot._cool_msg_index += 1
             try:
-                await message.reply("take this anti hawas tablets 20 times a day pls 💊")
-                print(f"✅ Replied to Cool")
+                await message.reply(reply_text)
+                print(f"✅ Replied to Cool (msg {bot._cool_msg_index})")
             except Exception as e:
                 print(f"❌ Cool reply error: {e}")
 
