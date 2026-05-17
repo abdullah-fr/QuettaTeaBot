@@ -1196,10 +1196,24 @@ async def on_message(message):
         except Exception:
             pass
 
-    # ==================== DEXTER AUTO-REPLY ====================
+    # ==================== DEXTER AUTO-REPLY (every 10th message) ====================
     if message.author.name == "_notdexter_" and not message.author.bot:
+        if not hasattr(bot, "_dexter_msg_count"):
+            bot._dexter_msg_count = 0
+        bot._dexter_msg_count += 1
+        if bot._dexter_msg_count >= 10:
+            bot._dexter_msg_count = 0
+            try:
+                await message.reply("Mommy")
+            except Exception:
+                pass
+
+    # ==================== COOL AUTO-REPLY ====================
+    if message.author.name == "imsohail_" and not message.author.bot:
         try:
-            await message.reply("Mommy")
+            emoji = discord.utils.get(message.guild.emojis, name="dzac_core")
+            if emoji:
+                await message.reply(str(emoji))
         except Exception:
             pass
 
