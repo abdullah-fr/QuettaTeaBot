@@ -1191,20 +1191,25 @@ async def on_message(message):
             emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
             if emoji:
                 await message.add_reaction(emoji)
-        except Exception:
-            pass
+                print(f"✅ Reacted to naamwahab")
+            else:
+                print(f"❌ Emoji terichyenahiraye not found")
+        except Exception as e:
+            print(f"❌ naamwahab reaction error: {e}")
 
     # ==================== DEXTER AUTO-REPLY (every 10th message) ====================
     if message.author.name == "_notdexter_" and not message.author.bot:
         if not hasattr(bot, "_dexter_msg_count"):
             bot._dexter_msg_count = 0
         bot._dexter_msg_count += 1
+        print(f"🔢 Dexter: {bot._dexter_msg_count}/10")
         if bot._dexter_msg_count >= 10:
             bot._dexter_msg_count = 0
             try:
                 await message.reply("https://tenor.com/view/dungeong-gif-13362807664297827620")
-            except Exception:
-                pass
+                print(f"✅ Replied to Dexter")
+            except Exception as e:
+                print(f"❌ Dexter reply error: {e}")
 
     # ==================== COOL AUTO-REPLY (every 5th message, rotating msgs) ====================
     if message.author.name == "imsohail_" and not message.author.bot:
@@ -1213,6 +1218,7 @@ async def on_message(message):
         if not hasattr(bot, "_cool_msg_index"):
             bot._cool_msg_index = 0
         bot._cool_msg_count += 1
+        print(f"🔢 Cool: {bot._cool_msg_count}/5")
         if bot._cool_msg_count >= 5:
             bot._cool_msg_count = 0
             cool_replies = [
@@ -1226,32 +1232,37 @@ async def on_message(message):
             bot._cool_msg_index += 1
             try:
                 await message.reply(reply_text)
-            except Exception:
-                pass
+                print(f"✅ Replied to Cool (msg {bot._cool_msg_index})")
+            except Exception as e:
+                print(f"❌ Cool reply error: {e}")
 
-    # ==================== AUDI AUTO-REPLY (every 5th message) ====================
+    # ==================== AUDI AUTO-REPLY (every 10th message) ====================
     if message.author.name == "iidentifyasaudi" and not message.author.bot:
         if not hasattr(bot, "_audi_msg_count"):
             bot._audi_msg_count = 0
         bot._audi_msg_count += 1
-        if bot._audi_msg_count >= 5:
+        print(f"🔢 Audi: {bot._audi_msg_count}/10")
+        if bot._audi_msg_count >= 10:
             bot._audi_msg_count = 0
             try:
                 await message.reply("bhai bhai bhai")
-            except Exception:
-                pass
+                print(f"✅ Replied to Audi")
+            except Exception as e:
+                print(f"❌ Audi reply error: {e}")
 
-    # ==================== FORBIDDEN DESSERT AUTO-REPLY (every 5th message) ====================
+    # ==================== FORBIDDEN DESSERT AUTO-REPLY (every 10th message) ====================
     if message.author.name == "forbiddendessert" and not message.author.bot:
         if not hasattr(bot, "_forbidden_msg_count"):
             bot._forbidden_msg_count = 0
         bot._forbidden_msg_count += 1
-        if bot._forbidden_msg_count >= 5:
+        print(f"🔢 Forbidden: {bot._forbidden_msg_count}/10")
+        if bot._forbidden_msg_count >= 10:
             bot._forbidden_msg_count = 0
             try:
                 await message.reply("Aunty chill")
-            except Exception:
-                pass
+                print(f"✅ Replied to Forbidden Dessert")
+            except Exception as e:
+                print(f"❌ Forbidden reply error: {e}")
 
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):
