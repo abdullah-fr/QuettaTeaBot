@@ -1313,6 +1313,15 @@ async def on_message(message):
         except:
             pass
 
+    # ==================== NAAMWAHAB AUTO-REPLY ====================
+    if message.author.name == "naamwahab" and not message.author.bot:
+        try:
+            emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
+            if emoji:
+                await message.reply(str(emoji))
+        except Exception:
+            pass
+
     # Check trivia answers
     await on_message_trivia_answer(message)
 
