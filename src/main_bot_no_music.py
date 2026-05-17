@@ -1227,6 +1227,18 @@ async def on_message(message):
             except Exception:
                 pass
 
+    # ==================== FORBIDDEN DESSERT AUTO-REPLY (every 5th message) ====================
+    if message.author.name == "forbiddendessert" and not message.author.bot:
+        if not hasattr(bot, "_forbidden_msg_count"):
+            bot._forbidden_msg_count = 0
+        bot._forbidden_msg_count += 1
+        if bot._forbidden_msg_count >= 5:
+            bot._forbidden_msg_count = 0
+            try:
+                await message.reply("Aunty chill")
+            except Exception:
+                pass
+
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):
         await bot.process_commands(message)
