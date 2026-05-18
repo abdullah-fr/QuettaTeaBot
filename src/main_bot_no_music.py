@@ -20,6 +20,7 @@ from api_helpers import (
     fetch_compliment,
     fetch_roast,
     fetch_ai_summary,
+    fetch_ai_chat_reply,
 )
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -1180,89 +1181,107 @@ async def on_message_delete(message):
         await logs_channel.send(embed=embed)
 
 
-# ==================== AUTO-REACTIONS & STICKY MESSAGE ====================
+# ==================== INTELLIGENT AUTO-REPLY SYSTEM ====================
+_channel_cooldowns: dict[int, float] = {}
+_user_cooldowns: dict[int, float] = {}
+_channel_history: dict[int, list[str]] = {}
+
+_PERSONAL_TRIGGERS = {
+    "naamwahab": {"type": "react", "value": "terichyenahiraye"},
+    "_notdexter_": {"type": "reply_rotate", "gap": 10, "msgs": [
+        "https://tenor.com/view/dungeong-gif-13362807664297827620",
+    ]},
+    "imsohail_": {"type": "reply_rotate", "gap": 5, "msgs": [
+        "take this anti hawas tablets 20 times a day pls 💊",
+        "Esi baat par @Cool Kalma parhlo.",
+        "yaqeen kro farishto ki jooti ka size shahrah e faisal se bara he uska khouf kha lo",
+        "i just checked google emran hashmi dad's generation is in pakistan too he married here too @Cool is related to that tree",
+        "cool thinks 2 planet apas me masti kr rhe the earth ban gayi or hum sab agaye...",
+    ]},
+    "iidentifyasaudi": {"type": "reply_rotate", "gap": 10, "msgs": [
+        "bhai bhai bhai",
+    ]},
+    "forbiddendessert": {"type": "reply_rotate", "gap": 10, "msgs": [
+        "Aunty chill",
+    ]},
+}
+_personal_counters: dict[str, int] = {}
+_personal_indexes: dict[str, int] = {}
+
+
 @bot.event
 async def on_message(message):
     global sticky_message_id
+    import time
 
-    # ==================== NAAMWAHAB AUTO-REPLY ====================
-    if message.author.name == "naamwahab" and not message.author.bot and message.guild:
-        try:
-            emoji = discord.utils.get(message.guild.emojis, name="terichyenahiraye")
-            if emoji:
-                await message.add_reaction(emoji)
-                print(f"✅ Reacted to naamwahab")
-            else:
-                print(f"❌ Emoji terichyenahiraye not found")
-        except Exception as e:
-            print(f"❌ naamwahab reaction error: {e}")
-
-    # ==================== DEXTER AUTO-REPLY (every 10th message) ====================
-    if message.author.name == "_notdexter_" and not message.author.bot:
-        if not hasattr(bot, "_dexter_msg_count"):
-            bot._dexter_msg_count = 0
-        bot._dexter_msg_count += 1
-        print(f"🔢 Dexter: {bot._dexter_msg_count}/10")
-        if bot._dexter_msg_count >= 10:
-            bot._dexter_msg_count = 0
+    # ==================== PERSONAL TRIGGERS ====================
+    if not message.author.bot and message.guild:
+        username = message.author.name
+        trigger = _PERSONAL_TRIGGERS.get(username)
+        if trigger:
             try:
-                await message.reply("https://tenor.com/view/dungeong-gif-13362807664297827620")
-                print(f"✅ Replied to Dexter")
-            except Exception as e:
-                print(f"❌ Dexter reply error: {e}")
+                if trigger["type"] == "react":
+                    emoji = discord.utils.get(message.guild.emojis, name=trigger["value"])
+                    if emoji:
+                        await message.add_reaction(emoji)
+                        print(f"✅ Reacted to {username}")
 
-    # ==================== COOL AUTO-REPLY (every 5th message, rotating msgs) ====================
-    if message.author.name == "imsohail_" and not message.author.bot:
-        if not hasattr(bot, "_cool_msg_count"):
-            bot._cool_msg_count = 0
-        if not hasattr(bot, "_cool_msg_index"):
-            bot._cool_msg_index = 0
-        bot._cool_msg_count += 1
-        print(f"🔢 Cool: {bot._cool_msg_count}/5")
-        if bot._cool_msg_count >= 5:
-            bot._cool_msg_count = 0
-            cool_replies = [
-                "take this anti hawas tablets 20 times a day pls 💊",
-                "Esi baat par @Cool Kalma parhlo.",
-                "yaqeen kro farishto ki jooti ka size shahrah e faisal se bara he uska khouf kha lo",
-                "i just checked google emran hashmi dad's generation is in pakistan too he married here too @Cool is related to that tree",
-                "cool thinks 2 planet apas me masti kr rhe the earth ban gayi or hum sab agaye...",
-            ]
-            reply_text = cool_replies[bot._cool_msg_index % len(cool_replies)]
-            bot._cool_msg_index += 1
-            try:
-                await message.reply(reply_text)
-                print(f"✅ Replied to Cool (msg {bot._cool_msg_index})")
+                elif trigger["type"] == "reply_rotate":
+                    _personal_counters[username] = _personal_counters.get(username, 0) + 1
+                    print(f"🔢 {username}: {_personal_counters[username]}/{trigger['gap']}")
+                    if _personal_counters[username] >= trigger["gap"]:
+                        _personal_counters[username] = 0
+                        msgs = trigger["msgs"]
+                        idx = _personal_indexes.get(username, 0)
+                        reply_text = msgs[idx % len(msgs)]
+                        _personal_indexes[username] = idx + 1
+                        await message.reply(reply_text)
+                        print(f"✅ Replied to {username}: {reply_text[:40]}")
             except Exception as e:
-                print(f"❌ Cool reply error: {e}")
+                print(f"❌ Personal trigger error for {username}: {e}")
 
-    # ==================== AUDI AUTO-REPLY (every 10th message) ====================
-    if message.author.name == "iidentifyasaudi" and not message.author.bot:
-        if not hasattr(bot, "_audi_msg_count"):
-            bot._audi_msg_count = 0
-        bot._audi_msg_count += 1
-        print(f"🔢 Audi: {bot._audi_msg_count}/10")
-        if bot._audi_msg_count >= 10:
-            bot._audi_msg_count = 0
-            try:
-                await message.reply("bhai bhai bhai")
-                print(f"✅ Replied to Audi")
-            except Exception as e:
-                print(f"❌ Audi reply error: {e}")
+    # ==================== INTELLIGENT AI CHAT REPLIES ====================
+    if (
+        not message.author.bot
+        and message.guild
+        and message.content
+        and len(message.content) > 3
+        and not message.content.startswith("/")
+    ):
+        now = time.time()
+        channel_id = message.channel.id
+        user_id = message.author.id
 
-    # ==================== FORBIDDEN DESSERT AUTO-REPLY (every 10th message) ====================
-    if message.author.name == "forbiddendessert" and not message.author.bot:
-        if not hasattr(bot, "_forbidden_msg_count"):
-            bot._forbidden_msg_count = 0
-        bot._forbidden_msg_count += 1
-        print(f"🔢 Forbidden: {bot._forbidden_msg_count}/10")
-        if bot._forbidden_msg_count >= 10:
-            bot._forbidden_msg_count = 0
-            try:
-                await message.reply("Aunty chill")
-                print(f"✅ Replied to Forbidden Dessert")
-            except Exception as e:
-                print(f"❌ Forbidden reply error: {e}")
+        if channel_id not in _channel_history:
+            _channel_history[channel_id] = []
+        _channel_history[channel_id].append(
+            f"{message.author.display_name}: {message.content[:200]}"
+        )
+        _channel_history[channel_id] = _channel_history[channel_id][-15:]
+
+        channel_last = _channel_cooldowns.get(channel_id, 0)
+        user_last = _user_cooldowns.get(user_id, 0)
+        if now - channel_last < 90 or now - user_last < 120:
+            pass
+        else:
+            content_lower = message.content.lower()
+            funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
+                              "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣"]
+            is_funny = any(k in content_lower for k in funny_keywords)
+            base_chance = 0.12 if is_funny else 0.05
+
+            if random.random() < base_chance:
+                emoji_names = [f"<:{e.name}:{e.id}>" for e in message.guild.emojis[:30]]
+                history = _channel_history.get(channel_id, [])
+                reply = await fetch_ai_chat_reply(history, emoji_names)
+                if reply and len(reply) > 2:
+                    try:
+                        await message.reply(reply)
+                        _channel_cooldowns[channel_id] = now
+                        _user_cooldowns[user_id] = now
+                        print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
+                    except Exception as e:
+                        print(f"❌ AI reply error: {e}")
 
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):

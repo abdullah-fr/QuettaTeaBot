@@ -205,68 +205,104 @@ async def fetch_roast():
 
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text):
-    """Generate conversation summary using Google Gemini (free)"""
+    """Generate conversation summary using Groq (free)"""
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        print("⚠️ GROQ_API_KEY not set. Get free key from https://console.groq.com")
+        return None
+    return await _groq_request(
+        api_key=groq_key,
+        system=(
+            "You are a Discord conversation summarizer. Your summaries are casual, "
+            "accurate, and concise. Always mention key usernames. Output only the "
+            "summary — no preamble, no title, no meta-commentary."
+        ),
+        user=(
+            f"Summarize the following Discord conversation.\n\n"
+            f"Rules:\n"
+            f"- 100 to 150 words max\n"
+            f"- 2 to 3 short paragraphs\n"
+            f"- Mention usernames when describing key moments\n"
+            f"- Skip spam, repeated emojis, and filler messages\n"
+            f"- Highlight funny moments, debates, or notable interactions\n"
+            f"- Capture the overall vibe (e.g. chaotic, chill, sarcastic)\n"
+            f"- Use a casual tone with a few relevant emojis\n"
+            f"- Start directly with the summary, no heading\n\n"
+            f"Conversation:\n{messages_text}"
+        ),
+        max_tokens=350,
+    )
 
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    if not gemini_key:
-        print("⚠️ GEMINI_API_KEY not set. Get free key from https://aistudio.google.com/app/apikey")
+
+async def fetch_ai_chat_reply(recent_messages: list[str], server_emojis: list[str]) -> str | None:
+    """Generate a witty, context-aware chat reply using Groq."""
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
         return None
 
-    return await try_gemini_summary(messages_text, gemini_key)
+    emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
+    conversation = "\n".join(recent_messages[-10:])
+
+    return await _groq_request(
+        api_key=groq_key,
+        system=(
+            "You are QuettaTeaBot, a funny, witty, slightly chaotic Discord bot member "
+            "in a Pakistani/South Asian community server called Quetta Tea Corner. "
+            "You talk like a real server member — casual Urdu/English mix is fine. "
+            "You are NOT a helpful assistant. You are a funny, sarcastic, hype-giving "
+            "community member who occasionally roasts, hypes, acts confused, or drops "
+            "one-liners. Never sound like an AI. Never be generic. Never be cringe. "
+            "Keep replies SHORT — 1 to 2 sentences max. "
+            f"Available custom server emojis you can use naturally: {emoji_hint}. "
+            "Use them like a real member would — sparingly and only when they fit the vibe."
+        ),
+        user=(
+            f"Recent chat in the server:\n{conversation}\n\n"
+            "Drop a short, natural reply that fits the vibe. "
+            "Don't address everyone. Don't start with 'lol' every time. "
+            "Be unpredictable. Sometimes hype, sometimes roast, sometimes confused, "
+            "sometimes a callback. Max 2 sentences."
+        ),
+        max_tokens=80,
+        temperature=1.1,
+    )
 
 
-async def try_gemini_summary(messages_text, api_key):
-    """Try Google Gemini (free tier, 1500 req/day)"""
+async def _groq_request(
+    api_key: str,
+    system: str,
+    user: str,
+    max_tokens: int = 200,
+    temperature: float = 0.7,
+) -> str | None:
+    """Shared Groq API call using aiohttp."""
     try:
         async with aiohttp.ClientSession() as session:
-            print(f"✅ Using Gemini: {api_key[:10]}...")
-
-            prompt = f"""You are a Discord conversation summarizer. Your summaries are casual, accurate, and concise. Always mention key usernames. Output only the summary — no preamble, no title, no meta-commentary.
-
-Summarize the following Discord conversation.
-
-Rules:
-- 100 to 150 words max
-- 2 to 3 short paragraphs
-- Mention usernames when describing key moments
-- Skip spam, repeated emojis, and filler messages
-- Highlight funny moments, debates, or notable interactions
-- Capture the overall vibe (e.g. chaotic, chill, sarcastic)
-- Use a casual tone with a few relevant emojis
-- Start directly with the summary, no heading
-
-Conversation:
-{messages_text}"""
-
             payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.6,
-                    "maxOutputTokens": 350
-                }
+                "model": "llama3-8b-8192",
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": temperature,
             }
-
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-
-            print(f"📤 Sending request to Gemini...")
-
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
             async with session.post(
-                url,
+                "https://api.groq.com/openai/v1/chat/completions",
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=30)
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=15),
             ) as resp:
-                print(f"📥 Gemini response: {resp.status}")
-
                 if resp.status == 200:
                     data = await resp.json()
-                    summary = data["candidates"][0]["content"]["parts"][0]["text"]
-                    print(f"✅ Gemini summary generated!")
-                    return summary
+                    return data["choices"][0]["message"]["content"].strip()
                 else:
-                    error_text = await resp.text()
-                    print(f"❌ Gemini error {resp.status}: {error_text}")
-                    return None
-
+                    err = await resp.text()
+                    print(f"❌ Groq error {resp.status}: {err}")
     except Exception as e:
-        print(f"❌ Gemini error: {e}")
+        print(f"❌ Groq request error: {e}")
     return None
