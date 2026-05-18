@@ -289,7 +289,7 @@ async def _groq_request(
     try:
         async with aiohttp.ClientSession() as session:
             payload = {
-                "model": "llama3-8b-8192",
+                "model": "llama-3.1-8b-instant",
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
