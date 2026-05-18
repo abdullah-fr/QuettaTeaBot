@@ -1188,6 +1188,7 @@ async def on_message_delete(message):
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _channel_history: dict[int, list[str]] = {}
+_last_replied_users: dict[int, int] = {}
 
 
 @bot.event
@@ -1206,6 +1207,7 @@ async def on_message(message):
         now = time.time()
         channel_id = message.channel.id
         user_id = message.author.id
+        content_lower = message.content.lower()
 
         # Track recent messages for context
         if channel_id not in _channel_history:
@@ -1215,33 +1217,52 @@ async def on_message(message):
         )
         _channel_history[channel_id] = _channel_history[channel_id][-15:]
 
-        # Cooldown checks — channel: 90s, user: 120s
-        channel_last = _channel_cooldowns.get(channel_id, 0)
-        user_last = _user_cooldowns.get(user_id, 0)
-        if now - channel_last < 90 or now - user_last < 120:
-            pass  # on cooldown, skip AI reply
-        else:
-            # Probability based on message vibe
-            content_lower = message.content.lower()
-            funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
-                              "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣"]
-            is_funny = any(k in content_lower for k in funny_keywords)
-            base_chance = 0.12 if is_funny else 0.05
+        # Serious topic detection — never reply during sensitive moments
+        serious_keywords = [
+            "death", "hospital", "sad", "depressed", "funeral",
+            "hurt", "crying", "suicide", "cancer", "died", "marna",
+            "mar gaya", "rona", "dukh", "takleef"
+        ]
+        if not any(k in content_lower for k in serious_keywords):
+            # Cooldown checks — channel: 90s, user: 120s
+            channel_last = _channel_cooldowns.get(channel_id, 0)
+            user_last = _user_cooldowns.get(user_id, 0)
+            if not (now - channel_last < 90 or now - user_last < 120):
+                # Avoid replying to same person twice in a row per channel
+                if _last_replied_users.get(channel_id) != user_id:
+                    # Activity detection — prefer active chats
+                    history = _channel_history.get(channel_id, [])
+                    is_active_chat = len(history) >= 5
 
-            if random.random() < base_chance:
-                # Get server emojis for context
-                emoji_names = [f"<:{e.name}:{e.id}>" for e in message.guild.emojis[:30]]
-                history = _channel_history.get(channel_id, [])
+                    # Probability based on message vibe
+                    funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
+                                      "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣",
+                                      "exposed", "ratio", "nahh", "bro", "skill issue"]
+                    is_funny = any(k in content_lower for k in funny_keywords)
+                    base_chance = 0.12 if is_funny else 0.05
+                    if is_active_chat:
+                        base_chance *= 1.8
 
-                reply = await fetch_ai_chat_reply(history, emoji_names)
-                if reply and len(reply) > 2:
-                    try:
-                        await message.reply(reply)
-                        _channel_cooldowns[channel_id] = now
-                        _user_cooldowns[user_id] = now
-                        print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
-                    except Exception as e:
-                        print(f"❌ AI reply error: {e}")
+                    if random.random() < base_chance:
+                        # Static non-animated emojis only, up to 75
+                        emoji_names = [
+                            f"<:{e.name}:{e.id}>"
+                            for e in message.guild.emojis
+                            if not e.animated
+                        ][:75]
+
+                        reply = await fetch_ai_chat_reply(history, emoji_names)
+
+                        # Random "think and say nothing" — feels human
+                        if reply and len(reply) > 2 and random.random() > 0.35:
+                            try:
+                                await message.reply(reply)
+                                _channel_cooldowns[channel_id] = now
+                                _user_cooldowns[user_id] = now
+                                _last_replied_users[channel_id] = user_id
+                                print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
+                            except Exception as e:
+                                print(f"❌ AI reply error: {e}")
 
     # Ignore DMs — all channel-specific logic below requires a guild channel
     if not isinstance(message.channel, discord.TextChannel):
