@@ -1189,60 +1189,11 @@ _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _channel_history: dict[int, list[str]] = {}
 
-# Personal triggers — specific members get specific treatment
-_PERSONAL_TRIGGERS = {
-    "naamwahab": {"type": "react", "value": "terichyenahiraye"},
-    "_notdexter_": {"type": "reply_rotate", "gap": 10, "msgs": [
-        "https://tenor.com/view/dungeong-gif-13362807664297827620",
-    ]},
-    "imsohail_": {"type": "reply_rotate", "gap": 5, "msgs": [
-        "take this anti hawas tablets 20 times a day pls 💊",
-        "Esi baat par @Cool Kalma parhlo.",
-        "yaqeen kro farishto ki jooti ka size shahrah e faisal se bara he uska khouf kha lo",
-        "i just checked google emran hashmi dad's generation is in pakistan too he married here too @Cool is related to that tree",
-        "cool thinks 2 planet apas me masti kr rhe the earth ban gayi or hum sab agaye...",
-    ]},
-    "iidentifyasaudi": {"type": "reply_rotate", "gap": 10, "msgs": [
-        "bhai bhai bhai",
-    ]},
-    "forbiddendessert": {"type": "reply_rotate", "gap": 10, "msgs": [
-        "Aunty chill",
-    ]},
-}
-_personal_counters: dict[str, int] = {}
-_personal_indexes: dict[str, int] = {}
-
 
 @bot.event
 async def on_message(message):
     global sticky_message_id
     import time
-
-    # ==================== PERSONAL TRIGGERS ====================
-    if not message.author.bot and message.guild:
-        username = message.author.name
-        trigger = _PERSONAL_TRIGGERS.get(username)
-        if trigger:
-            try:
-                if trigger["type"] == "react":
-                    emoji = discord.utils.get(message.guild.emojis, name=trigger["value"])
-                    if emoji:
-                        await message.add_reaction(emoji)
-                        print(f"✅ Reacted to {username}")
-
-                elif trigger["type"] == "reply_rotate":
-                    _personal_counters[username] = _personal_counters.get(username, 0) + 1
-                    print(f"🔢 {username}: {_personal_counters[username]}/{trigger['gap']}")
-                    if _personal_counters[username] >= trigger["gap"]:
-                        _personal_counters[username] = 0
-                        msgs = trigger["msgs"]
-                        idx = _personal_indexes.get(username, 0)
-                        reply_text = msgs[idx % len(msgs)]
-                        _personal_indexes[username] = idx + 1
-                        await message.reply(reply_text)
-                        print(f"✅ Replied to {username}: {reply_text[:40]}")
-            except Exception as e:
-                print(f"❌ Personal trigger error for {username}: {e}")
 
     # ==================== INTELLIGENT AI CHAT REPLIES ====================
     if (
