@@ -1,168 +1,128 @@
-# Quetta Tea Bot
+# QuettaTeaBot 🍵
 
-<div align="center">
-
-![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)
-![Deploy](https://github.com/abdullah-fr/QuettaTeaBot/workflows/Deploy%20to%20Production/badge.svg)
-![License](https://img.shields.io/badge/license-Private-red)
-
-A feature-rich Discord bot built for community engagement — games, music, Ramadan tools, role management, and more.
-
-</div>
+A feature-rich Discord bot built for the **Quetta Tea Corner** community server. Handles moderation utilities, entertainment, music playback, channel automation, and AI-powered chat replies.
 
 ---
 
 ## Features
 
-### 🎮 Games & Entertainment
-- **Trivia** — unlimited questions pulled from an API, with a global leaderboard (`/trivia`, `/triviascores`)
-- **Riddles** — 5-minute timer, first correct answer wins (`/riddle`)
-- **Would You Rather** — reaction-based polls with fresh questions every time (`/wyr`)
-- **Question of the Day** — daily conversation prompt (`/qotd`)
-- **Roast & Compliment** — friendly roasts and compliments, optionally targeting a member (`/roast`, `/compliment`)
-- **Urdu Poetry** — random Urdu/Rekhta poetry (`/rekhta`)
-
 ### 🎵 Music
-Stream audio from YouTube directly into voice channels.
+- `/play` — play any song by name or YouTube link with autocomplete
+- `/search` — search YouTube and pick from a dropdown
+- `/queue` — view the current queue
+- `/skip`, `/pause`, `/resume`, `/stop`, `/disconnect`
+- Now Playing card with ⏸ Pause, ⏭ Skip, ⏹ Stop buttons
 
-| Command | Description |
-|---------|-------------|
-| `/play <song>` | Play by YouTube link or search text (with autocomplete) |
-| `/search <song>` | Search YouTube and pick from a dropdown |
-| `/queue` | View the current queue |
-| `/skip` | Skip the current track |
-| `/pause` / `/resume` | Pause or resume playback |
-| `/stop` | Stop playback and clear the queue |
-| `/connect` / `/disconnect` | Join or leave your voice channel |
+### 🤖 AI Chat Replies
+- Randomly replies to conversations using Groq (llama-3.1-8b-instant)
+- Context-aware — reads recent chat history before replying
+- Vibe detection — higher chance during funny/chaotic moments
+- Serious topic detection — never replies during sensitive conversations
+- Per-channel and per-user cooldowns to avoid spam
+- Uses server custom emojis naturally
 
-The Now Playing message includes inline ⏸ Pause, ⏭ Skip, and ⏹ Stop buttons.
+### 🛡️ Moderation
+- `/purge` — bulk delete up to 100 messages with filters (all, text, images, voice, links) and message link anchor
+- Auto-deletes non-image messages in `#art-n-clicks` and `#foodie` channels
+- Notifies users with an auto-disappearing message when rules are broken
 
-> **YouTube sign-in issues?** Add `YTDLP_COOKIES_BROWSER=brave` (or your browser) to `.env` for local use, or `YTDLP_COOKIES_FILE=/path/to/cookies.txt` for a hosted bot.
+### 📋 Channel Automation
+- **Auto threads** — creates discussion threads on every confession in `#freedom-of-speech`
+- **Auto threads** — creates welcome threads on every intro in `#intro`
+- **Auto threads** — creates discussion threads on every image post in `#art-n-clicks` and `#foodie`
+- **Sticky intro message** — keeps the intro format pinned at the bottom of `#intro`
 
-### 🌙 Ramadan Features
-Prayer times and reminders for 8 Pakistani cities (Islamabad, Lahore, Karachi, Faisalabad, Rawalpindi, Multan, Peshawar, Quetta).
+### 👋 Join/Leave Logs (`#tollplaza`)
+- Compact embed on member join with: username, invited by, account age, member count
+- Compact embed on member leave with: username, join date, roles, member count
+- Tracks invite usage to show who invited each member
 
-| Command | Description |
-|---------|-------------|
-| `/ramadan [city]` | Today's Sehri/Iftar times with live Iftar countdown |
-| `/iftar` | Countdown to Iftar (Maghrib) |
-| `/hadith` | Random hadith about Ramadan from Sahih Bukhari |
-| `/ayat` | Random Ramadan-related Quranic verse |
-
-**Automated reminders** (no command needed):
-- Sehri reminder 15 minutes before Fajr
-- Iftar announcement at Maghrib time with the Iftar dua
-- Daily Hadith posted at 8:00 PM PKT
-- Daily Ayat posted at 9:00 AM PKT
-
-### 👥 Social & Engagement
-- **Daily streaks and rewards** — track consecutive activity
-- **Voice channel time tracking** — per-user, per-server (`/vctime`)
-- **Pet system** — adopt and care for a virtual pet (`/adopt`)
-- **Pomodoro timer** — study timer up to 60 minutes (`/pomodoro`)
-- **AI channel summary** — summarize the last 50–500 messages with Gemini (`/tldr`)
+### 🎮 Entertainment
+- `/trivia` — trivia questions with 2-minute timer and leaderboard
+- `/riddle` — riddles with 5-minute timer
+- `/wyr` — Would You Rather questions
+- `/qotd` — Question of the Day
+- `/roast` — friendly roasts
+- `/compliment` — compliments
+- `/rekhta` — random Urdu poetry
+- `/pomodoro` — study timer
 
 ### 🎨 Role Management
-- **Color roles** — 36 color options via interactive buttons (`/setupcolors`)
-- **Hobby roles** — Gaming, Art, Music, Reading via buttons (`/setuphobbies`)
-- **Notification roles** — VC Pings, Chat Pings, Game Pings, Event Pings
+- 37 color roles via button panel
+- Notification roles (VC Ping, Chat Ping, Game Ping, Event Ping)
+- Hobby roles (Gaming, Art, Music, Reading)
 
-### 🛠️ Utility & Admin
-- **Server stats** — member count, online count, channel counts (`/stats`)
-- **Purge** — bulk delete messages with filters (text, images, links, voice messages) and message-link anchor support (`/purge`)
+### 📊 Utilities
+- `/stats` — server statistics
+- `/vctime` — voice chat time tracker per user per server
+- `/tldr` — AI-powered channel summary (last 50–500 messages)
+- `/adopt` — virtual pet system
 
 ---
 
 ## Setup
 
-### Prerequisites
-
-- Python 3.10, 3.11, or 3.12
-- [FFmpeg](https://ffmpeg.org/download.html) — required for music playback
-- A Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
+### Requirements
+- Python 3.11+
+- ffmpeg (for music)
 
 ### Installation
 
-1. **Clone the repo**
-   ```bash
-   git clone https://github.com/abdullah-fr/QuettaTeaBot.git
-   cd QuettaTeaBot
-   ```
-
-2. **Create a virtual environment**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Then open `.env` and fill in your values (see [Environment Variables](#environment-variables) below).
-
-5. **Run the bot**
-   ```bash
-   cd src && python main_bot.py
-   ```
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_TOKEN` | ✅ Yes | Your bot token from the Discord Developer Portal |
-| `GROQ_API_KEY` | Optional | Enables AI-powered `/tldr` summaries ([get a free key](https://console.groq.com/keys)) |
-| `API_NINJAS_KEY` | Optional | Enables riddle questions from API Ninjas ([get a free key](https://api-ninjas.com/)) |
-| `BOT_DATA_FILE` | Optional | Custom path for persistent data (defaults to `data/bot_data.json`) |
-| `YTDLP_COOKIES_BROWSER` | Optional | Browser to pull YouTube cookies from (e.g. `brave`, `chrome`) |
-| `YTDLP_COOKIES_FILE` | Optional | Path to a cookies.txt file for YouTube auth on hosted bots |
-| `YTDLP_JS_RUNTIME` | Optional | JavaScript runtime for YouTube challenge solving (defaults to `node`) |
-
----
-
-## Project Structure
-
+```bash
+git clone https://github.com/abdullah-fr/QuettaTeaBot.git
+cd QuettaTeaBot
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
-QuettaTeaBot/
-├── src/
-│   ├── main_bot.py          # Bot entry point, commands, and event handlers
-│   ├── music_player.py      # YouTube music streaming and queue management
-│   ├── ramadan_features.py  # Prayer times, countdowns, and automated reminders
-│   ├── api_helpers.py       # External API integrations (trivia, jokes, AI, etc.)
-│   └── question_bank.py     # Static content (poetry, fallback questions, etc.)
-├── data/
-│   └── bot_data.json        # Persistent storage (scores, VC time, pets, etc.)
-├── .env.example             # Environment variable template
-├── requirements.txt         # Python dependencies
-├── Procfile                 # Railway deployment config
-└── nixpacks.toml            # Nixpacks build config
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+```env
+DISCORD_TOKEN=your_bot_token
+GROQ_API_KEY=your_groq_key        # free at console.groq.com
+API_NINJAS_KEY=your_key           # optional, for riddles
+```
+
+### Running
+
+```bash
+# With music
+.venv/bin/python src/main_bot.py
+
+# Without music (for low-memory hosting)
+.venv/bin/python src/main_bot_no_music.py
 ```
 
 ---
 
 ## Deployment
 
-The bot is deployed on [Wispbyte](https://wispbyte.com) with automatic deploys triggered on pushes to `main`. The deploy pipeline runs the full test suite before deploying — a failing test blocks the deploy.
+The bot includes a `nixpacks.toml` for platforms like Railway or Wispbyte.
 
-For Railway or similar platforms, the `Procfile` and `nixpacks.toml` are already configured.
+For Pterodactyl/FeatherPanel, use the Python Generic egg with:
+- **APP PY FILE**: `src/main_bot_no_music.py`
+- **REQUIREMENTS FILE**: `requirements.txt`
+- **USER UPLOADED FILES**: `1`
+
+> Music requires at least 1GB RAM. The no-music version runs comfortably under 100MB.
 
 ---
 
-## Contributing
+## Bot Permissions Required
 
-1. Fork the repo and create a branch from `main`
-2. Make your changes and run the tests: `pytest tests/ -v`
-3. Open a pull request — the PR template will guide you through the checklist
+- Read/Send Messages
+- Manage Messages
+- Manage Threads
+- Add Reactions
+- Embed Links
+- Connect & Speak (for music)
+- View Audit Log (for invite tracking)
+- Manage Server (for invite tracking)
 
 ---
 
 ## License
 
-Private project maintained by [@abdullah-fr](https://github.com/abdullah-fr).
+MIT

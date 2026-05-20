@@ -1188,84 +1188,194 @@ async def on_message_delete(message):
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _channel_history: dict[int, list[str]] = {}
+_channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
+AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+LOW_SIGNAL_AI_MESSAGES = {
+    "bot", "check", "test", "testing", "1", "2", "3", "123",
+    "meow", "ah", "ahh", "ahhh", "ahhhh", "aaaa", "aaaaa",
+    "ew", "eww", "ewww", "ewwww", "noew", "wtf", "ok", "okay",
+}
+
+
+def _sanitize_ai_history_content(content: str) -> str:
+    import re
+
+    content = re.sub(r"<a?:[A-Za-z0-9_~]+:\d+>", "[emoji]", content)
+    content = re.sub(r":[A-Za-z0-9_~]+:", "[emoji]", content)
+    return re.sub(r"\s+", " ", content).strip()
+
+
+def _is_low_signal_ai_message(content: str) -> bool:
+    import re
+
+    text = _sanitize_ai_history_content(content).lower()
+    text = re.sub(r"<@!?\d+>|@\S+", "", text)
+    text = re.sub(r"https?://\S+", "", text).strip()
+    text_without_emoji = text.replace("[emoji]", "").strip()
+    compact = re.sub(r"[^a-z0-9]+", "", text_without_emoji)
+
+    if not compact:
+        return True
+    if compact in LOW_SIGNAL_AI_MESSAGES:
+        return True
+    if compact.isdigit():
+        return True
+    if len(compact) <= 2:
+        return True
+    if len(compact) <= 8 and len(set(compact)) <= 2:
+        return True
+    if re.fullmatch(r"(.)\1{3,}", compact):
+        return True
+    return False
+
+
+def _has_custom_emoji_token(text: str) -> bool:
+    import re
+
+    return bool(re.search(r"<a?:[A-Za-z0-9_~]+:\d+>", text))
+
+
+def _pick_ai_custom_emoji(
+    content_lower: str,
+    reply: str,
+    emoji_tokens_by_name: dict[str, str],
+) -> str | None:
+    combined = f"{content_lower} {reply.lower()}"
+    candidates: list[str] = []
+
+    if any(k in combined for k in ["lol", "lmao", "haha", "😂", "🤣", "funny"]):
+        candidates += ["tikkilaughing", "point_lol", "chas_agai", "dead", "bruh"]
+    if any(k in combined for k in ["kya", "what", "wait", "huh", "hein", "confused"]):
+        candidates += ["kya", "huhhhhhh", "heinnnn", "hmmm", "interesting"]
+    if any(k in combined for k in ["sad", "cry", "😭", "dukh"]):
+        candidates += ["pepe_sad", "dukhi_meso", "cryagya"]
+    if any(k in combined for k in ["sus", "cooking", "cook", "plot"]):
+        candidates += ["sus", "something_cooking", "whats_cooking_man"]
+    if any(k in combined for k in ["nice", "yay", "vibe", "real", "valid"]):
+        candidates += ["yayyyyy", "cybvibe", "vibes_pakruga", "cool_smirk"]
+
+    candidates += ["bruh", "kya", "hmmm", "dead", "chas_agai", "cool_smirk"]
+    available = [emoji_tokens_by_name[name] for name in candidates if name in emoji_tokens_by_name]
+    return random.choice(available) if available else None
+
+
+async def maybe_send_ai_chat_reply(message):
+    import time
+
+    if (
+        message.author.bot
+        or not message.guild
+        or not isinstance(message.channel, AI_CHAT_CHANNEL_TYPES)
+        or not message.content
+        or len(message.content) <= 3
+        or message.content.startswith("/")
+    ):
+        return
+
+    now = time.time()
+    channel_id = message.channel.id
+    user_id = message.author.id
+    content_lower = message.content.lower()
+    cleaned_content = _sanitize_ai_history_content(message.content[:200])
+
+    # Track recent messages for context
+    if now - _channel_last_seen.get(channel_id, 0) > 180:
+        _channel_history[channel_id] = []
+    _channel_last_seen[channel_id] = now
+
+    if channel_id not in _channel_history:
+        _channel_history[channel_id] = []
+    _channel_history[channel_id].append(
+        f"{message.author.display_name}: {cleaned_content}"
+    )
+    _channel_history[channel_id] = _channel_history[channel_id][-15:]
+
+    if _is_low_signal_ai_message(message.content):
+        return
+
+    # Serious topic detection — skip only the AI reply, not command handling.
+    serious_keywords = [
+        "death", "hospital", "sad", "depressed", "funeral",
+        "hurt", "crying", "suicide", "cancer", "died", "marna",
+        "mar gaya", "rona", "dukh", "takleef", "sympathy",
+        "gonna be fine", "one day u gonna be fine", "missing you",
+        "cuddle", "bbg"
+    ]
+    if any(k in content_lower for k in serious_keywords):
+        return
+
+    # Cooldown checks — channel: 45s, user: 75s
+    channel_last = _channel_cooldowns.get(channel_id, 0)
+    user_last = _user_cooldowns.get(user_id, 0)
+    if now - channel_last < 45 or now - user_last < 75:
+        return
+
+    # Avoid replying to same person twice in a row per channel
+    if _last_replied_users.get(channel_id) == user_id:
+        return
+
+    # Activity detection — prefer active chats
+    history = _channel_history.get(channel_id, [])
+    is_active_chat = len(history) >= 4
+
+    # Probability based on message vibe
+    funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
+                      "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣",
+                      "exposed", "ratio", "nahh", "bro", "skill issue"]
+    is_funny = any(k in content_lower for k in funny_keywords)
+    base_chance = 0.22 if is_funny else 0.10
+    if is_active_chat:
+        base_chance *= 2.0
+
+    if not is_active_chat and not is_funny:
+        return
+
+    if random.random() >= base_chance:
+        return
+
+    emoji_tokens_by_name = {
+        e.name.lower(): f"<:{e.name}:{e.id}>"
+        for e in message.guild.emojis
+        if not e.animated
+    }
+    emoji_names = [
+        token
+        for _, token in sorted(emoji_tokens_by_name.items())
+    ][:75]
+
+    reply = await fetch_ai_chat_reply(history, emoji_names, cleaned_content)
+
+    # Random "think and say nothing" — feels human
+    if not reply or len(reply) <= 2 or random.random() <= 0.20:
+        return
+
+    if not _has_custom_emoji_token(reply) and random.random() < 0.70:
+        custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
+        if custom_emoji:
+            reply = f"{reply.rstrip()} {custom_emoji}"
+
+    try:
+        async with message.channel.typing():
+            await asyncio.sleep(random.uniform(2.0, 5.5))
+        await message.reply(reply, mention_author=False)
+        _channel_cooldowns[channel_id] = now
+        _user_cooldowns[user_id] = now
+        _last_replied_users[channel_id] = user_id
+        print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
+    except Exception as e:
+        print(f"❌ AI reply error: {e}")
 
 
 @bot.event
 async def on_message(message):
     global sticky_message_id
-    import time
 
     # ==================== INTELLIGENT AI CHAT REPLIES ====================
-    if (
-        not message.author.bot
-        and message.guild
-        and message.content
-        and len(message.content) > 3
-        and not message.content.startswith("/")
-    ):
-        now = time.time()
-        channel_id = message.channel.id
-        user_id = message.author.id
-        content_lower = message.content.lower()
-
-        # Track recent messages for context
-        if channel_id not in _channel_history:
-            _channel_history[channel_id] = []
-        _channel_history[channel_id].append(
-            f"{message.author.display_name}: {message.content[:200]}"
-        )
-        _channel_history[channel_id] = _channel_history[channel_id][-15:]
-
-        # Serious topic detection — never reply during sensitive moments
-        serious_keywords = [
-            "death", "hospital", "sad", "depressed", "funeral",
-            "hurt", "crying", "suicide", "cancer", "died", "marna",
-            "mar gaya", "rona", "dukh", "takleef"
-        ]
-        if not any(k in content_lower for k in serious_keywords):
-            # Cooldown checks — channel: 90s, user: 120s
-            channel_last = _channel_cooldowns.get(channel_id, 0)
-            user_last = _user_cooldowns.get(user_id, 0)
-            if not (now - channel_last < 90 or now - user_last < 120):
-                # Avoid replying to same person twice in a row per channel
-                if _last_replied_users.get(channel_id) != user_id:
-                    # Activity detection — prefer active chats
-                    history = _channel_history.get(channel_id, [])
-                    is_active_chat = len(history) >= 5
-
-                    # Probability based on message vibe
-                    funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
-                                      "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣",
-                                      "exposed", "ratio", "nahh", "bro", "skill issue"]
-                    is_funny = any(k in content_lower for k in funny_keywords)
-                    base_chance = 0.12 if is_funny else 0.05
-                    if is_active_chat:
-                        base_chance *= 1.8
-
-                    if random.random() < base_chance:
-                        # Static non-animated emojis only, up to 75
-                        emoji_names = [
-                            f"<:{e.name}:{e.id}>"
-                            for e in message.guild.emojis
-                            if not e.animated
-                        ][:75]
-
-                        reply = await fetch_ai_chat_reply(history, emoji_names)
-
-                        # Random "think and say nothing" — feels human
-                        if reply and len(reply) > 2 and random.random() > 0.35:
-                            try:
-                                await message.reply(reply)
-                                _channel_cooldowns[channel_id] = now
-                                _user_cooldowns[user_id] = now
-                                _last_replied_users[channel_id] = user_id
-                                print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
-                            except Exception as e:
-                                print(f"❌ AI reply error: {e}")
+    await maybe_send_ai_chat_reply(message)
 
     # Ignore DMs — all channel-specific logic below requires a guild channel
-    if not isinstance(message.channel, discord.TextChannel):
+    if not message.guild or not isinstance(message.channel, (discord.TextChannel, discord.VoiceChannel, discord.Thread)):
         await bot.process_commands(message)
         return
 
