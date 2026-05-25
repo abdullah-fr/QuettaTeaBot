@@ -788,7 +788,7 @@ async def tldr(interaction: discord.Interaction, count: int):
                     msg_preview = messages[i][:200]
                     summary += f"{msg_preview}\n"
 
-            summary += f"\n⚠️ **Note:** Set GEMINI_API_KEY environment variable for AI-powered summaries!\n"
+            summary += "\n⚠️ **Note:** Set GEMINI_API_KEY environment variable for AI-powered summaries!\n"
             summary += "Get free API key from: https://aistudio.google.com/app/apikey"
 
             if len(summary) > 4000:
@@ -882,8 +882,6 @@ async def purge(
 
     # Purge messages
     try:
-        from datetime import timedelta
-
         total_deleted = 0
 
         if after_message:
@@ -1099,64 +1097,6 @@ async def checkaudit(interaction: discord.Interaction, limit: int = 10):
         await interaction.followup.send(f"❌ Error: {str(e)}")
 
 
-# ==================== MILESTONE CELEBRATIONS ====================
-@bot.event
-async def on_member_join(member):
-    unverified_role = discord.utils.get(member.guild.roles, name="Unverified")
-    if unverified_role:
-        await member.add_roles(unverified_role)
-        print(f"✅ Assigned Unverified role to {member.name}")
-
-    guild = member.guild
-    member_count = guild.member_count
-
-    milestones = [50, 100, 200, 500, 1000]
-    if member_count in milestones:
-        channel = discord.utils.get(guild.text_channels, name="general")
-        if channel:
-            embed = discord.Embed(
-                title="🎉 MILESTONE REACHED!",
-                description=f"We just hit **{member_count} members**! 🎊",
-                color=discord.Color.gold(),
-            )
-            await channel.send(embed=embed)
-
-
-@bot.event
-async def on_member_remove(member):
-    print(f"⚠️ {member.name} ({member.id}) left the server")
-    print(
-        f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}"
-    )
-    print(f"   Joined at: {member.joined_at}")
-    print(f"   Account created: {member.created_at}")
-
-    verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
-    if verified_role and verified_role in member.roles:
-        print(f"   ⚠️ WARNING: This member had the Verified role!")
-
-        logs_channel = discord.utils.get(member.guild.text_channels, name="logs")
-        if logs_channel:
-            embed = discord.Embed(
-                title="⚠️ Verified Member Left",
-                description=f"{member.mention} ({member.name}) left the server",
-                color=discord.Color.orange(),
-            )
-            embed.add_field(name="User ID", value=member.id, inline=True)
-            embed.add_field(
-                name="Joined",
-                value=f"<t:{int(member.joined_at.timestamp())}:R>",
-                inline=True,
-            )
-            embed.add_field(
-                name="Roles",
-                value=", ".join([r.name for r in member.roles if r.name != "@everyone"])
-                or "None",
-                inline=False,
-            )
-            await logs_channel.send(embed=embed)
-
-
 # ==================== VERIFIED ROLE WELCOME ====================
 @bot.event
 async def on_member_update(before, after):
@@ -1177,7 +1117,7 @@ async def on_member_update(before, after):
             break
 
     if not verified_role:
-        print(f"⚠️ No '✔️Verified' role found in server roles")
+        print("⚠️ No '✔️Verified' role found in server roles")
 
     if verified_role and verified_role in added_roles:
         print(f"✅ Verified role detected for {after.name}")
@@ -1205,7 +1145,7 @@ async def on_member_update(before, after):
             await general_channel.send(welcome_message)
             print(f"✅ Sent welcome message for {after.name} in general")
         else:
-            print(f"❌ General channel not found")
+            print("❌ General channel not found")
             print(f"Available channels: {[c.name for c in after.guild.text_channels]}")
 
 
@@ -1618,7 +1558,7 @@ async def on_message(message):
             embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
             new_sticky = await message.channel.send(embed=embed)
             sticky_message_id = new_sticky.id
-        except:
+        except Exception:
             pass
 
     # Check trivia answers
@@ -1633,6 +1573,27 @@ async def on_message(message):
 # ==================== TOLLPLAZA - JOIN/LEAVE LOGS ====================
 @bot.event
 async def on_member_join(member: discord.Member):
+    # Assign Unverified role on join
+    unverified_role = discord.utils.get(member.guild.roles, name="Unverified")
+    if unverified_role:
+        try:
+            await member.add_roles(unverified_role)
+        except Exception:
+            print(f"⚠️ Failed to assign Unverified role to {member.name}")
+
+    # Milestone celebration in #general
+    milestones = {50, 100, 200, 500, 1000}
+    if member.guild.member_count in milestones:
+        general = discord.utils.get(member.guild.text_channels, name="general")
+        if general:
+            await general.send(
+                embed=discord.Embed(
+                    title="🎉 MILESTONE REACHED!",
+                    description=f"We just hit **{member.guild.member_count} members**! 🎊",
+                    color=discord.Color.gold(),
+                )
+            )
+
     channel = discord.utils.get(member.guild.text_channels, name="tollplaza")
     if not channel:
         return
@@ -1686,6 +1647,31 @@ async def on_member_join(member: discord.Member):
 
 @bot.event
 async def on_member_remove(member: discord.Member):
+    # Warn in #logs if a Verified member left
+    verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
+    if verified_role and verified_role in member.roles:
+        logs_channel = discord.utils.get(member.guild.text_channels, name="logs")
+        if logs_channel:
+            warn_embed = discord.Embed(
+                title="⚠️ Verified Member Left",
+                description=f"{member.mention} ({member.name}) left the server",
+                color=discord.Color.orange(),
+            )
+            warn_embed.add_field(name="User ID", value=member.id, inline=True)
+            if member.joined_at:
+                warn_embed.add_field(
+                    name="Joined",
+                    value=f"<t:{int(member.joined_at.timestamp())}:R>",
+                    inline=True,
+                )
+            warn_embed.add_field(
+                name="Roles",
+                value=", ".join([r.name for r in member.roles if r.name != "@everyone"])
+                or "None",
+                inline=False,
+            )
+            await logs_channel.send(embed=warn_embed)
+
     channel = discord.utils.get(member.guild.text_channels, name="tollplaza")
     if not channel:
         return
@@ -1752,7 +1738,7 @@ async def on_ready():
             if message.author == bot.user and message.embeds:
                 if "Welcome to Quetta Tea Corner" in message.embeds[0].title:
                     sticky_message_id = message.id
-                    print(f"✅ Found sticky intro message")
+                    print("✅ Found sticky intro message")
                     break
         if not sticky_message_id:
             embed = discord.Embed(
@@ -1769,7 +1755,7 @@ async def on_ready():
             embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
             sticky_msg = await intro_channel.send(embed=embed)
             sticky_message_id = sticky_msg.id
-            print(f"✅ Created sticky intro message")
+            print("✅ Created sticky intro message")
 
     # Sync slash commands with Discord
     try:
@@ -1779,7 +1765,7 @@ async def on_ready():
         guild = discord.Object(id=bot.guilds[0].id)
         bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
-        print(f"✅ Guild sync complete")
+        print("✅ Guild sync complete")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
 

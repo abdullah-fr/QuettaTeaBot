@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import tasks
 import aiohttp
 import asyncio
 from datetime import datetime, timedelta
@@ -809,8 +809,8 @@ def initialize_ramadan_features(bot):
 
     print("✅ Ramadan features initialized!")
     print(f"   - City: {ramadan_bot.current_city}")
-    print(f"   - Sehri/Iftar reminders enabled")
-    print(f"   - Slash commands enabled: /ramadan /iftar /hadith /ayat")
+    print("   - Sehri/Iftar reminders enabled")
+    print("   - Slash commands enabled: /ramadan /iftar /hadith /ayat")
     print(f"   - Daily Hadith at {RAMADAN_CONFIG['hadith_time']['hour']}:00 PKT")
     print(f"   - Daily Ayat at {RAMADAN_CONFIG['ayat_time']['hour']}:00 PKT")
 

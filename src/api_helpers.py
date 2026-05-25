@@ -1,3 +1,5 @@
+from typing import Any
+
 import aiohttp
 import json
 import random
@@ -19,8 +21,14 @@ async def _fetch_json(
     headers: dict[str, str] | None = None,
     params: dict[str, str] | None = None,
     timeout: int = 15,
-) -> dict | list | None:
-    async def _request() -> dict | list | None:
+) -> Any:
+    """Fetch and decode JSON. Returns the parsed body (dict/list) or None.
+
+    Typed as Any because response shapes vary per endpoint and callers know
+    the expected schema.
+    """
+
+    async def _request() -> Any:
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 url,
@@ -89,7 +97,7 @@ async def _fetch_text(
 
 
 # ==================== TRIVIA API ====================
-async def fetch_trivia_question():
+async def fetch_trivia_question() -> dict | None:
     """Fetch unlimited trivia from Open Trivia Database"""
     data = await _fetch_json("https://opentdb.com/api.php?amount=1&type=multiple")
     if not data or data.get("response_code") != 0:
@@ -109,7 +117,7 @@ async def fetch_trivia_question():
 
 
 # ==================== RIDDLE API ====================
-async def fetch_riddle():
+async def fetch_riddle() -> dict | None:
     """Fetch riddles from API Ninjas"""
     headers = {
         "X-Api-Key": (
@@ -130,7 +138,7 @@ async def fetch_riddle():
 
 
 # ==================== JOKE API ====================
-async def fetch_joke():
+async def fetch_joke() -> str | None:
     """Fetch jokes from JokeAPI"""
     data = await _fetch_json("https://v2.jokeapi.dev/joke/Any?safe-mode")
     if not data:
@@ -146,7 +154,7 @@ async def fetch_joke():
 
 
 # ==================== QOTD API (Unlimited) ====================
-async def fetch_qotd():
+async def fetch_qotd() -> str | None:
     """Fetch unlimited conversation questions"""
     data = await _fetch_json("https://api.quotable.io/quotes/random?limit=1")
     if data and len(data) > 0:
@@ -172,7 +180,7 @@ async def fetch_qotd():
 
 
 # ==================== WOULD YOU RATHER API ====================
-async def fetch_wyr():
+async def fetch_wyr() -> str | None:
     """Fetch unlimited Would You Rather questions"""
     data = await _fetch_json("https://api.truthordarebot.xyz/v1/wyr")
     if data and "question" in data:
@@ -195,7 +203,7 @@ async def fetch_wyr():
 
 
 # ==================== CONVERSATION STARTER API ====================
-async def fetch_conversation_starter():
+async def fetch_conversation_starter() -> str | None:
     """Fetch unlimited conversation starters"""
     text = await _fetch_text(
         "https://api.adviceslip.com/advice",
@@ -222,22 +230,22 @@ async def fetch_conversation_starter():
 
 
 # ==================== COMPLIMENT API ====================
-async def fetch_compliment():
+async def fetch_compliment() -> str | None:
     """Fetch unlimited compliments"""
     data = await _fetch_json("https://compliments-api.herokuapp.com/compliment")
-    if data and "compliment" in data:
+    if isinstance(data, dict) and "compliment" in data:
         return data["compliment"]
 
     # Fallback: Affirmations
     data = await _fetch_json("https://www.affirmations.dev/")
-    if data and "affirmation" in data:
+    if isinstance(data, dict) and "affirmation" in data:
         return data["affirmation"]
 
     return None
 
 
 # ==================== ROAST (Clean & Friendly Only) ====================
-async def fetch_roast():
+async def fetch_roast() -> None:
     """Always use our clean, friendly roast list - NO API"""
     # All roast APIs contain inappropriate content
     # We ONLY use our curated clean list from question_bank.py
@@ -245,7 +253,7 @@ async def fetch_roast():
 
 
 # ==================== AI SUMMARIZATION ====================
-async def fetch_ai_summary(messages_text):
+async def fetch_ai_summary(messages_text: str) -> str | None:
     """Generate conversation summary using Groq (free)"""
     groq_key = (
         settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
