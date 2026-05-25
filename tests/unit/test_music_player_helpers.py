@@ -95,9 +95,14 @@ def test_first_entry_returns_first_valid_entry():
     assert _first_entry(info) == {"title": "x"}
 
 
-def test_first_entry_raises_when_no_entries():
+def test_first_entry_raises_when_all_entries_are_none():
     with pytest.raises(MusicError):
-        _first_entry({"entries": []})
+        _first_entry({"entries": [None, None]})
+
+
+def test_first_entry_returns_info_when_entries_empty():
+    info = {"title": "no-playlist", "entries": []}
+    assert _first_entry(info) is info
 
 
 def test_base_ytdlp_options_includes_defaults():

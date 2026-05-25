@@ -1,3 +1,5 @@
+from pydantic import SecretStr
+
 from src import api_helpers
 
 
@@ -78,3 +80,64 @@ async def test_fetch_qotd_falls_back_to_opentdb(monkeypatch):
 
     result = await api_helpers.fetch_qotd()
     assert result == "What do you think: What makes you smile?"
+
+
+async def test_fetch_ai_summary_returns_none_when_no_groq_key(monkeypatch):
+    monkeypatch.setattr(api_helpers.settings, "groq_api_key", None)
+    assert await api_helpers.fetch_ai_summary("hello world") is None
+
+
+async def test_fetch_ai_chat_reply_returns_none_when_no_groq_key(monkeypatch):
+    monkeypatch.setattr(api_helpers.settings, "groq_api_key", None)
+    assert await api_helpers.fetch_ai_chat_reply(["hi"], ["smile"]) is None
+
+
+async def test_fetch_ai_chat_reply_returns_groq_response(monkeypatch):
+    monkeypatch.setattr(
+        api_helpers.settings, "groq_api_key", SecretStr("fake-groq-key")
+    )
+
+    captured = {}
+
+    async def fake_groq_request(api_key, system, user, max_tokens=200, temperature=0.7):
+        captured["api_key"] = api_key
+        captured["system"] = system
+        captured["user"] = user
+        return "bro got cooked 💀"
+
+    monkeypatch.setattr(api_helpers, "_groq_request", fake_groq_request)
+
+    reply = await api_helpers.fetch_ai_chat_reply(
+        ["how's everyone", "kuch nahi yaar"], ["smile", "cry"]
+    )
+    assert reply == "bro got cooked 💀"
+    assert captured["api_key"] == "fake-groq-key"
+    assert "smile, cry" in captured["system"]
+    assert "kuch nahi yaar" in captured["user"]
+
+
+async def test_fetch_ai_summary_passes_messages_to_groq(monkeypatch):
+    monkeypatch.setattr(
+        api_helpers.settings, "groq_api_key", SecretStr("fake-groq-key")
+    )
+
+    captured = {}
+
+    async def fake_groq_request(api_key, system, user, max_tokens=200, temperature=0.7):
+        captured["user"] = user
+        captured["max_tokens"] = max_tokens
+        return "Summary text"
+
+    monkeypatch.setattr(api_helpers, "_groq_request", fake_groq_request)
+
+    result = await api_helpers.fetch_ai_summary("alice: hi\nbob: hello")
+    assert result == "Summary text"
+    assert "alice: hi" in captured["user"]
+    assert captured["max_tokens"] == 350
+
+
+def test_http_status_error_stores_status_and_body():
+    err = api_helpers.HttpStatusError(503, "service unavailable")
+    assert err.status == 503
+    assert err.body == "service unavailable"
+    assert "503" in str(err)
