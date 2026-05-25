@@ -72,7 +72,14 @@ A feature-rich Discord bot built for the **Quetta Tea Corner** community server.
 git clone https://github.com/abdullah-fr/QuettaTeaBot.git
 cd QuettaTeaBot
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt
+
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
 ```
 
 ### Environment Variables
@@ -88,11 +95,24 @@ API_NINJAS_KEY=your_key           # optional, for riddles
 ### Running
 
 ```bash
-# With music
-.venv/bin/python src/main_bot.py
+# With music (needs ~1 GB RAM, ffmpeg installed)
+python src/main_bot.py
 
 # Without music (for low-memory hosting)
-.venv/bin/python src/main_bot_no_music.py
+python src/main_bot_no_music.py
+```
+
+---
+
+## Development
+
+For local development, testing, and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ --ignore=tests/performance -q
+black --check .
+flake8 src/ tests/
 ```
 
 ---
