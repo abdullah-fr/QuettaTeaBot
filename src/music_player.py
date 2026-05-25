@@ -17,9 +17,7 @@ except ImportError:
 MAX_QUEUE_SIZE = 50
 SEARCH_LIMIT = 5
 AUTOCOMPLETE_LIMIT = 10
-FFMPEG_BEFORE_OPTIONS = (
-    "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-)
+FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 FFMPEG_OPTIONS = "-vn"
 YOUTUBE_AUTH_HINT = (
     "YouTube is asking for sign-in verification. Add "
@@ -62,7 +60,9 @@ class GuildMusicState:
 
     def enqueue(self, track: Track) -> int:
         if len(self.queue) >= MAX_QUEUE_SIZE:
-            raise MusicError("The music queue is full. Try again after a few songs play.")
+            raise MusicError(
+                "The music queue is full. Try again after a few songs play."
+            )
 
         self.queue.append(track)
         return len(self.queue)
@@ -101,7 +101,9 @@ def truncate_text(value: str, limit: int) -> str:
     return value[: limit - 3].rstrip() + "..."
 
 
-def _parse_browser_cookie_spec(spec: str) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
+def _parse_browser_cookie_spec(
+    spec: str,
+) -> tuple[str, Optional[str], Optional[str], Optional[str]]:
     browser_spec, _, container = spec.strip().partition("::")
     browser_keyring, _, profile = browser_spec.partition(":")
     browser, _, keyring = browser_keyring.partition("+")
@@ -112,7 +114,9 @@ def _parse_browser_cookie_spec(spec: str) -> tuple[str, Optional[str], Optional[
     container = container.strip() or None
 
     if not browser:
-        raise MusicError("YTDLP_COOKIES_BROWSER is set but does not include a browser name.")
+        raise MusicError(
+            "YTDLP_COOKIES_BROWSER is set but does not include a browser name."
+        )
 
     return browser, profile, keyring, container
 
@@ -160,7 +164,10 @@ def _music_error_from_exception(exc: Exception, action: str) -> MusicError:
     if "Sign in to confirm" in message or "--cookies-from-browser" in message:
         return MusicError(YOUTUBE_AUTH_HINT)
 
-    if "Signature solving failed" in message or "Requested format is not available" in message:
+    if (
+        "Signature solving failed" in message
+        or "Requested format is not available" in message
+    ):
         return MusicError(
             f"Could not {action}. YouTube needs a JavaScript runtime for this video. "
             "Install Node.js or set `YTDLP_JS_RUNTIME=node`, then restart the bot."
@@ -223,7 +230,9 @@ def _base_ytdlp_options() -> dict:
     return options
 
 
-def _track_from_info(info: dict, requested_by: str, requested_by_id: Optional[int]) -> Track:
+def _track_from_info(
+    info: dict, requested_by: str, requested_by_id: Optional[int]
+) -> Track:
     webpage_url = _normalize_webpage_url(info)
     stream_url = info.get("url")
 
@@ -389,11 +398,17 @@ class MusicPlayerView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
-    @discord.ui.button(label="⏸ Pause", style=discord.ButtonStyle.primary, custom_id="music_pause")
-    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="⏸ Pause", style=discord.ButtonStyle.primary, custom_id="music_pause"
+    )
+    async def pause_resume(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         vc = self._vc()
         if not vc:
-            await interaction.response.send_message("Not connected to voice.", ephemeral=True)
+            await interaction.response.send_message(
+                "Not connected to voice.", ephemeral=True
+            )
             return
         if vc.is_paused():
             vc.resume()
@@ -403,16 +418,22 @@ class MusicPlayerView(discord.ui.View):
             button.label = "▶️ Resume"
         await interaction.response.edit_message(view=self)
 
-    @discord.ui.button(label="⏭ Skip", style=discord.ButtonStyle.secondary, custom_id="music_skip")
+    @discord.ui.button(
+        label="⏭ Skip", style=discord.ButtonStyle.secondary, custom_id="music_skip"
+    )
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
         vc = self._vc()
         if not vc or (not vc.is_playing() and not vc.is_paused()):
-            await interaction.response.send_message("Nothing is playing.", ephemeral=True)
+            await interaction.response.send_message(
+                "Nothing is playing.", ephemeral=True
+            )
             return
         vc.stop()
         await interaction.response.send_message("⏭ Skipped.", ephemeral=True)
 
-    @discord.ui.button(label="⏹ Stop", style=discord.ButtonStyle.danger, custom_id="music_stop")
+    @discord.ui.button(
+        label="⏹ Stop", style=discord.ButtonStyle.danger, custom_id="music_stop"
+    )
     async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.guild is None:
             await interaction.response.send_message("Server only.", ephemeral=True)
@@ -423,7 +444,9 @@ class MusicPlayerView(discord.ui.View):
         if vc and (vc.is_playing() or vc.is_paused()):
             vc.stop()
         await self.disable_all()
-        await interaction.response.send_message("⏹ Stopped and queue cleared.", ephemeral=True)
+        await interaction.response.send_message(
+            "⏹ Stopped and queue cleared.", ephemeral=True
+        )
 
 
 class MusicSearchSelect(discord.ui.Select):
@@ -601,7 +624,9 @@ class MusicController:
             f"Connected to **{voice_client.channel.name}**.", ephemeral=ephemeral
         )
 
-    async def disconnect_from_interaction(self, interaction: discord.Interaction) -> None:
+    async def disconnect_from_interaction(
+        self, interaction: discord.Interaction
+    ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
                 "Music commands only work inside a server.", ephemeral=True
@@ -638,7 +663,9 @@ class MusicController:
 
         # Run voice connect and track resolution concurrently for faster response
         voice_task = asyncio.create_task(
-            self.ensure_voice_client(interaction, ephemeral=ephemeral, require_ffmpeg=True)
+            self.ensure_voice_client(
+                interaction, ephemeral=ephemeral, require_ffmpeg=True
+            )
         )
         track_task = asyncio.create_task(
             resolve_track(
@@ -671,7 +698,11 @@ class MusicController:
 
     async def start_if_idle(self, guild: discord.Guild) -> None:
         voice_client = guild.voice_client
-        if voice_client and not voice_client.is_playing() and not voice_client.is_paused():
+        if (
+            voice_client
+            and not voice_client.is_playing()
+            and not voice_client.is_paused()
+        ):
             await self.start_next(guild)
 
     async def start_next(self, guild: discord.Guild) -> None:
@@ -731,7 +762,9 @@ class MusicController:
             view.message = msg
             state.player_view = view
 
-    async def after_track(self, guild: discord.Guild, error: Optional[Exception]) -> None:
+    async def after_track(
+        self, guild: discord.Guild, error: Optional[Exception]
+    ) -> None:
         state = self.get_state(guild.id)
         if error and state.text_channel:
             await state.text_channel.send(f"Playback error: {error}")
@@ -745,7 +778,9 @@ class MusicController:
             color=discord.Color.green(),
         )
         embed.add_field(name="Position", value=str(position), inline=True)
-        embed.add_field(name="Duration", value=format_duration(track.duration), inline=True)
+        embed.add_field(
+            name="Duration", value=format_duration(track.duration), inline=True
+        )
         if track.uploader:
             embed.add_field(name="Channel", value=track.uploader, inline=True)
         if track.thumbnail:
@@ -759,7 +794,9 @@ class MusicController:
             description=f"[{track.title}]({track.webpage_url})",
             color=discord.Color.blurple(),
         )
-        embed.add_field(name="Duration", value=format_duration(track.duration), inline=True)
+        embed.add_field(
+            name="Duration", value=format_duration(track.duration), inline=True
+        )
         embed.add_field(name="Requested by", value=track.requested_by, inline=True)
         if track.thumbnail:
             embed.set_thumbnail(url=track.thumbnail)
@@ -777,7 +814,9 @@ class MusicController:
                 inline=False,
             )
         else:
-            embed.add_field(name="Now Playing", value="Nothing right now.", inline=False)
+            embed.add_field(
+                name="Now Playing", value="Nothing right now.", inline=False
+            )
 
         if not state.queue:
             embed.add_field(name="Up Next", value="Queue is empty.", inline=False)
@@ -800,7 +839,9 @@ class MusicController:
 def setup_music_commands(bot) -> MusicController:
     controller = MusicController(bot)
 
-    @bot.tree.command(name="play", description="Play a song from YouTube search or link")
+    @bot.tree.command(
+        name="play", description="Play a song from YouTube search or link"
+    )
     @app_commands.describe(song="Song name or YouTube URL")
     @app_commands.autocomplete(song=autocomplete_song_names)
     async def play(interaction: discord.Interaction, song: str):
@@ -853,7 +894,9 @@ def setup_music_commands(bot) -> MusicController:
         )
         view.message = message
 
-    @bot.tree.command(name="connect", description="Connect the bot to your voice channel")
+    @bot.tree.command(
+        name="connect", description="Connect the bot to your voice channel"
+    )
     async def connect(interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
         await controller.connect_from_interaction(interaction)
@@ -918,7 +961,9 @@ def setup_music_commands(bot) -> MusicController:
         if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
             voice_client.stop()
 
-        await interaction.response.send_message("Stopped the music and cleared the queue.")
+        await interaction.response.send_message(
+            "Stopped the music and cleared the queue."
+        )
 
     @bot.tree.command(name="disconnect", description="Disconnect the bot from voice")
     async def disconnect(interaction: discord.Interaction):

@@ -126,8 +126,16 @@ async def test_memory_stress():
         random_provider=FakeRandom(),
     )
 
-    cities = ["Islamabad", "Lahore", "Karachi", "Peshawar", "Quetta",
-              "Faisalabad", "Rawalpindi", "Multan"]
+    cities = [
+        "Islamabad",
+        "Lahore",
+        "Karachi",
+        "Peshawar",
+        "Quetta",
+        "Faisalabad",
+        "Rawalpindi",
+        "Multan",
+    ]
 
     # Fill cache with multiple cities
     for city in cities:

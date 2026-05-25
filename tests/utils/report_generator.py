@@ -21,15 +21,15 @@ def generate_html_report(test_results, output_path="reports/test_report.html"):
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Calculate statistics
-    total_tests = test_results.get('total', 0)
-    passed = test_results.get('passed', 0)
-    failed = test_results.get('failed', 0)
-    skipped = test_results.get('skipped', 0)
-    duration = test_results.get('duration', 0)
+    total_tests = test_results.get("total", 0)
+    passed = test_results.get("passed", 0)
+    failed = test_results.get("failed", 0)
+    skipped = test_results.get("skipped", 0)
+    duration = test_results.get("duration", 0)
     pass_rate = (passed / total_tests * 100) if total_tests > 0 else 0
 
     # Get test details
-    tests = test_results.get('tests', [])
+    tests = test_results.get("tests", [])
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -365,7 +365,7 @@ def generate_html_report(test_results, output_path="reports/test_report.html"):
 </html>"""
 
     # Write to file
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     return output_path
@@ -376,26 +376,26 @@ def generate_test_items(tests):
     if not tests:
         return '<p class="text-muted">No test results available.</p>'
 
-    html = ''
+    html = ""
     for test in tests:
-        status = test.get('status', 'unknown')
-        name = test.get('name', 'Unknown Test')
-        path = test.get('path', '')
-        duration = test.get('duration', 0)
+        status = test.get("status", "unknown")
+        name = test.get("name", "Unknown Test")
+        path = test.get("path", "")
+        duration = test.get("duration", 0)
 
         # Determine badge and icon
-        if status == 'passed':
-            badge_class = 'bg-success'
-            icon = 'bi-check-circle-fill'
-            status_text = 'PASSED'
-        elif status == 'failed':
-            badge_class = 'bg-danger'
-            icon = 'bi-x-circle-fill'
-            status_text = 'FAILED'
+        if status == "passed":
+            badge_class = "bg-success"
+            icon = "bi-check-circle-fill"
+            status_text = "PASSED"
+        elif status == "failed":
+            badge_class = "bg-danger"
+            icon = "bi-x-circle-fill"
+            status_text = "FAILED"
         else:
-            badge_class = 'bg-warning'
-            icon = 'bi-dash-circle-fill'
-            status_text = 'SKIPPED'
+            badge_class = "bg-warning"
+            icon = "bi-dash-circle-fill"
+            status_text = "SKIPPED"
 
         html += f"""
             <div class="test-item {status}">
@@ -422,25 +422,25 @@ def generate_test_items(tests):
 if __name__ == "__main__":
     # Example usage
     sample_results = {
-        'total': 12,
-        'passed': 12,
-        'failed': 0,
-        'skipped': 0,
-        'duration': 0.35,
-        'tests': [
+        "total": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "duration": 0.35,
+        "tests": [
             {
-                'name': 'test_iftar_countdown_one_hour_remaining',
-                'path': 'tests/features/test_iftar_countdown.py',
-                'status': 'passed',
-                'duration': 0.028
+                "name": "test_iftar_countdown_one_hour_remaining",
+                "path": "tests/features/test_iftar_countdown.py",
+                "status": "passed",
+                "duration": 0.028,
             },
             {
-                'name': 'test_project_structure_exists',
-                'path': 'tests/test_smoke.py::TestProjectSetup',
-                'status': 'passed',
-                'duration': 0.012
+                "name": "test_project_structure_exists",
+                "path": "tests/test_smoke.py::TestProjectSetup",
+                "status": "passed",
+                "duration": 0.012,
             },
-        ]
+        ],
     }
 
     generate_html_report(sample_results)

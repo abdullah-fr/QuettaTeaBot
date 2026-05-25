@@ -6,15 +6,14 @@ import pytest
 import time
 from pathlib import Path
 
-
 # Store test results
 test_results = {
-    'total': 0,
-    'passed': 0,
-    'failed': 0,
-    'skipped': 0,
-    'duration': 0,
-    'tests': []
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "duration": 0,
+    "tests": [],
 }
 
 start_time = None
@@ -28,27 +27,31 @@ def pytest_sessionstart(session):
 
 def pytest_runtest_logreport(report):
     """Called for each test phase (setup, call, teardown)"""
-    if report.when == 'call':
-        test_results['total'] += 1
+    if report.when == "call":
+        test_results["total"] += 1
 
         test_info = {
-            'name': report.head_line if hasattr(report, 'head_line') else report.nodeid.split('::')[-1],
-            'path': report.nodeid,
-            'duration': report.duration,
-            'status': 'passed'
+            "name": (
+                report.head_line
+                if hasattr(report, "head_line")
+                else report.nodeid.split("::")[-1]
+            ),
+            "path": report.nodeid,
+            "duration": report.duration,
+            "status": "passed",
         }
 
         if report.passed:
-            test_results['passed'] += 1
-            test_info['status'] = 'passed'
+            test_results["passed"] += 1
+            test_info["status"] = "passed"
         elif report.failed:
-            test_results['failed'] += 1
-            test_info['status'] = 'failed'
+            test_results["failed"] += 1
+            test_info["status"] = "failed"
         elif report.skipped:
-            test_results['skipped'] += 1
-            test_info['status'] = 'skipped'
+            test_results["skipped"] += 1
+            test_info["status"] = "skipped"
 
-        test_results['tests'].append(test_info)
+        test_results["tests"].append(test_info)
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -56,7 +59,7 @@ def pytest_sessionfinish(session, exitstatus):
     global start_time
 
     if start_time:
-        test_results['duration'] = time.time() - start_time
+        test_results["duration"] = time.time() - start_time
 
     # Generate custom HTML report
     try:

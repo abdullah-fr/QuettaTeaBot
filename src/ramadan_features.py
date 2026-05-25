@@ -281,6 +281,7 @@ class RamadanBot:
         if hour_12 == 0:
             hour_12 = 12
         return f"{hour_12}:{minute:02d} {period}"
+
     async def process_prayer_time_check(self, bot):
         """
         Extracted logic for testing scheduled reminders.
@@ -316,7 +317,6 @@ class RamadanBot:
             return "IFTAR_TIME"
 
         return None
-
 
 
 # Setup commands
@@ -494,8 +494,13 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
     Keeps existing automated tasks intact; adds /-commands for consistency.
     """
 
-    @bot.tree.command(name="ramadan", description="Show today's Sehri/Iftar timings (with Iftar countdown)")
-    @app_commands.describe(city="Optional: city in Pakistan (e.g. Quetta, Karachi, Lahore)")
+    @bot.tree.command(
+        name="ramadan",
+        description="Show today's Sehri/Iftar timings (with Iftar countdown)",
+    )
+    @app_commands.describe(
+        city="Optional: city in Pakistan (e.g. Quetta, Karachi, Lahore)"
+    )
     async def ramadan(interaction: discord.Interaction, city: str | None = None):
         await interaction.response.defer()
 
@@ -512,7 +517,9 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
 
         timings = await ramadan_bot.fetch_prayer_times()
         if not timings:
-            await interaction.followup.send("❌ Could not fetch prayer times. Please try again later.")
+            await interaction.followup.send(
+                "❌ Could not fetch prayer times. Please try again later."
+            )
             return
 
         fajr = timings["Fajr"]
@@ -526,8 +533,12 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
             description=f"Prayer times for {ramadan_bot.now_provider().strftime('%B %d, %Y')}",
             color=discord.Color.green(),
         )
-        embed.add_field(name="🌅 Sehri Ends (Fajr)", value=f"**{fajr_12hr}** PKT", inline=True)
-        embed.add_field(name="🌆 Iftar Time (Maghrib)", value=f"**{maghrib_12hr}** PKT", inline=True)
+        embed.add_field(
+            name="🌅 Sehri Ends (Fajr)", value=f"**{fajr_12hr}** PKT", inline=True
+        )
+        embed.add_field(
+            name="🌆 Iftar Time (Maghrib)", value=f"**{maghrib_12hr}** PKT", inline=True
+        )
 
         countdown = await ramadan_bot.get_iftar_countdown()
         if countdown and countdown["total_seconds"] > 0:
@@ -545,20 +556,28 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
         await interaction.response.defer()
         hadith_data = await ramadan_bot.fetch_random_hadith()
 
-        embed = discord.Embed(title="📿 Hadith about Ramadan", color=discord.Color.gold())
+        embed = discord.Embed(
+            title="📿 Hadith about Ramadan", color=discord.Color.gold()
+        )
         embed.add_field(name="Arabic", value=hadith_data["arabic"], inline=False)
-        embed.add_field(name="English Translation", value=hadith_data["english"], inline=False)
+        embed.add_field(
+            name="English Translation", value=hadith_data["english"], inline=False
+        )
         embed.set_footer(text=f"Reference: {hadith_data['reference']}")
         await interaction.followup.send(embed=embed)
 
-    @bot.tree.command(name="ayat", description="Get a random Ramadan-related Quranic verse")
+    @bot.tree.command(
+        name="ayat", description="Get a random Ramadan-related Quranic verse"
+    )
     async def ayat(interaction: discord.Interaction):
         await interaction.response.defer()
         ayat_data = await ramadan_bot.fetch_random_ayat()
 
         embed = discord.Embed(title="📖 Quranic Verse", color=discord.Color.blue())
         embed.add_field(name="Arabic", value=ayat_data["arabic"], inline=False)
-        embed.add_field(name="English Translation", value=ayat_data["english"], inline=False)
+        embed.add_field(
+            name="English Translation", value=ayat_data["english"], inline=False
+        )
         embed.set_footer(text=f"Surah {ayat_data['surah']}, Ayah {ayat_data['ayah']}")
         await interaction.followup.send(embed=embed)
 
@@ -567,11 +586,15 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
         await interaction.response.defer()
         countdown = await ramadan_bot.get_iftar_countdown()
         if not countdown:
-            await interaction.followup.send("❌ Could not fetch Iftar time. Please try again later.")
+            await interaction.followup.send(
+                "❌ Could not fetch Iftar time. Please try again later."
+            )
             return
 
         if countdown["total_seconds"] <= 0:
-            await interaction.followup.send("🌆 It's Iftar time! Break your fast. Alhamdulillah!")
+            await interaction.followup.send(
+                "🌆 It's Iftar time! Break your fast. Alhamdulillah!"
+            )
             return
 
         embed = discord.Embed(
@@ -584,7 +607,11 @@ def setup_ramadan_slash_commands(bot, ramadan_bot: RamadanBot):
             value=f"**{countdown['hours']}** hours, **{countdown['minutes']}** minutes, **{countdown['seconds']}** seconds",
             inline=False,
         )
-        embed.add_field(name="🌆 Iftar Time", value=f"**{countdown['iftar_time']}** PKT", inline=False)
+        embed.add_field(
+            name="🌆 Iftar Time",
+            value=f"**{countdown['iftar_time']}** PKT",
+            inline=False,
+        )
         await interaction.followup.send(embed=embed)
 
 
@@ -610,7 +637,10 @@ def setup_ramadan_tasks(bot, ramadan_bot):
         maghrib_time = timings["Maghrib"]
 
         # Sehri reminder
-        if event == "SEHRI_REMINDER" and ramadan_bot.last_sehri_reminder != current_date:
+        if (
+            event == "SEHRI_REMINDER"
+            and ramadan_bot.last_sehri_reminder != current_date
+        ):
             channel = discord.utils.get(
                 bot.guilds[0].text_channels, name=RAMADAN_CONFIG["general_channel"]
             )

@@ -87,7 +87,10 @@ def test_normalize_webpage_url_uses_fallback_fields():
     assert _normalize_webpage_url({"webpage_url": "https://x.com"}) == "https://x.com"
     assert _normalize_webpage_url({"original_url": "https://y.com"}) == "https://y.com"
     assert _normalize_webpage_url({"url": "https://z.com"}) == "https://z.com"
-    assert _normalize_webpage_url({"id": "dQw4w9WgXcQ"}) == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    assert (
+        _normalize_webpage_url({"id": "dQw4w9WgXcQ"})
+        == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    )
 
 
 def test_first_entry_returns_first_valid_entry():

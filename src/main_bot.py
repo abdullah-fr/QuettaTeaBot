@@ -146,8 +146,7 @@ class ColorRoleButton(Button):
                 f"⚠️ Role {self.color_name} not found!", ephemeral=True
             )
             return
-        current_roles = [
-            r for r in interaction.user.roles if r.name in COLOR_ROLES]
+        current_roles = [r for r in interaction.user.roles if r.name in COLOR_ROLES]
         if current_roles:
             await interaction.user.remove_roles(*current_roles)
         try:
@@ -344,8 +343,7 @@ async def on_message_trivia_answer(message):
 
     for trivia_id, trivia_data in active_trivias.items():
         if message.channel == trivia_data["channel"]:
-            trivia_data["answers"][str(
-                message.author.id)] = message.content.strip()
+            trivia_data["answers"][str(message.author.id)] = message.content.strip()
 
 
 @bot.tree.command(name="triviascores", description="Show trivia leaderboard")
@@ -355,20 +353,18 @@ async def triviascores(interaction: discord.Interaction):
         await interaction.response.send_message("No trivia scores yet!")
         return
 
-    sorted_scores = sorted(
-        scores.items(), key=lambda x: x[1], reverse=True)[:10]
-    embed = discord.Embed(title="🏆 Trivia Leaderboard",
-                          color=discord.Color.gold())
+    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
+    embed = discord.Embed(title="🏆 Trivia Leaderboard", color=discord.Color.gold())
 
     for i, (user_id, score) in enumerate(sorted_scores, 1):
         user = await bot.fetch_user(int(user_id))
-        embed.add_field(name=f"{i}. {user.name}",
-                        value=f"{score} points", inline=False)
+        embed.add_field(name=f"{i}. {user.name}", value=f"{score} points", inline=False)
 
     await interaction.response.send_message(embed=embed)
 
 
 # ==================== WOULD YOU RATHER (API - Unlimited) ====================
+
 
 @bot.tree.command(name="wyr", description="Get unlimited Would You Rather questions")
 async def wyr(interaction: discord.Interaction):
@@ -402,14 +398,16 @@ async def riddle(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🤯 Riddle Time!", description=riddle["q"], color=discord.Color.orange()
     )
-    embed.set_footer(
-        text="You have 5 minutes to guess! First correct answer wins.")
+    embed.set_footer(text="You have 5 minutes to guess! First correct answer wins.")
 
     await interaction.response.send_message(embed=embed)
     msg = await interaction.original_response()
 
-    active_riddles[msg.id] = {"riddle": riddle,
-                              "channel": interaction.channel, "solved": False}
+    active_riddles[msg.id] = {
+        "riddle": riddle,
+        "channel": interaction.channel,
+        "solved": False,
+    }
     await asyncio.sleep(300)
     await reveal_riddle_answer(msg.id)
 
@@ -499,6 +497,7 @@ async def qotd(interaction: discord.Interaction):
 
 # ==================== COMPLIMENT GENERATOR ====================
 
+
 @bot.tree.command(name="compliment", description="Give someone a compliment")
 @app_commands.describe(member="The member to compliment (optional)")
 async def compliment(interaction: discord.Interaction, member: discord.Member = None):
@@ -522,8 +521,7 @@ async def compliment(interaction: discord.Interaction, member: discord.Member = 
 async def stats(interaction: discord.Interaction):
     guild = interaction.guild
     total_members = guild.member_count
-    online_members = sum(
-        1 for m in guild.members if m.status != discord.Status.offline)
+    online_members = sum(1 for m in guild.members if m.status != discord.Status.offline)
     text_channels = len(guild.text_channels)
     voice_channels = len(guild.voice_channels)
 
@@ -553,8 +551,7 @@ async def on_voice_state_update(member, before, after):
     if before.channel is None and after.channel is not None:
         bot_data["vc_time"][server_key]["join_time"] = datetime.now().isoformat()
         save_data(bot_data)
-        print(
-            f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
+        print(f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
 
     elif before.channel is not None and after.channel is None:
         if "join_time" in bot_data["vc_time"][server_key]:
@@ -571,7 +568,9 @@ async def on_voice_state_update(member, before, after):
             )
 
 
-@bot.tree.command(name="vctime", description="Check your voice chat time in this server")
+@bot.tree.command(
+    name="vctime", description="Check your voice chat time in this server"
+)
 async def vctime(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     guild_id = str(interaction.guild.id)
@@ -584,15 +583,16 @@ async def vctime(interaction: discord.Interaction):
     total_minutes = bot_data["vc_time"][server_key].get("total_minutes", 0)
 
     if "join_time" in bot_data["vc_time"][server_key]:
-        join_time = datetime.fromisoformat(
-            bot_data["vc_time"][server_key]["join_time"])
+        join_time = datetime.fromisoformat(bot_data["vc_time"][server_key]["join_time"])
         current_session = (datetime.now() - join_time).total_seconds() / 60
         total_minutes += current_session
 
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
-        await interaction.response.send_message(f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{interaction.guild.name}**!")
+        await interaction.response.send_message(
+            f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{interaction.guild.name}**!"
+        )
     else:
         await interaction.response.send_message(
             "You haven't joined any voice channels in this server yet! Join a VC to start tracking your time."
@@ -654,7 +654,9 @@ class HobbyRoleView(discord.ui.View):
             )
 
 
-@bot.tree.command(name="setuphobbies", description="Setup hobby reaction roles (Admin only)")
+@bot.tree.command(
+    name="setuphobbies", description="Setup hobby reaction roles (Admin only)"
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def setuphobbies(interaction: discord.Interaction):
     embed = discord.Embed(
@@ -674,8 +676,7 @@ async def adopt(interaction: discord.Interaction):
         return
 
     pet = random.choice(PETS)
-    bot_data["pet_system"][user_id] = {
-        "pet": pet, "hunger": 100, "happiness": 100}
+    bot_data["pet_system"][user_id] = {"pet": pet, "hunger": 100, "happiness": 100}
     save_data(bot_data)
 
     embed = discord.Embed(
@@ -704,20 +705,26 @@ async def pomodoro(interaction: discord.Interaction, minutes: int = 25):
         await interaction.response.send_message("Maximum 60 minutes!")
         return
 
-    await interaction.response.send_message(f"⏰ Pomodoro timer started for {minutes} minutes!")
+    await interaction.response.send_message(
+        f"⏰ Pomodoro timer started for {minutes} minutes!"
+    )
     await asyncio.sleep(minutes * 60)
-    await interaction.channel.send(f"{interaction.user.mention} ⏰ Time's up! Take a break! 🎉")
+    await interaction.channel.send(
+        f"{interaction.user.mention} ⏰ Time's up! Take a break! 🎉"
+    )
 
 
 # ==================== TLDR COMMAND ====================
 @bot.tree.command(name="tldr", description="Summarize previous messages in the channel")
 @app_commands.describe(count="Number of messages to summarize (50, 100, 200, or 500)")
-@app_commands.choices(count=[
-    app_commands.Choice(name="50 messages", value=50),
-    app_commands.Choice(name="100 messages", value=100),
-    app_commands.Choice(name="200 messages", value=200),
-    app_commands.Choice(name="500 messages", value=500),
-])
+@app_commands.choices(
+    count=[
+        app_commands.Choice(name="50 messages", value=50),
+        app_commands.Choice(name="100 messages", value=100),
+        app_commands.Choice(name="200 messages", value=200),
+        app_commands.Choice(name="500 messages", value=500),
+    ]
+)
 async def tldr(interaction: discord.Interaction, count: int):
     await interaction.response.defer()
 
@@ -749,10 +756,11 @@ async def tldr(interaction: discord.Interaction, count: int):
             embed = discord.Embed(
                 title="📝 Channel Summary",
                 description=ai_summary,
-                color=discord.Color.blue()
+                color=discord.Color.blue(),
             )
             embed.set_footer(
-                text=f"AI-generated summary of {len(messages)} messages | Powered by Gemini")
+                text=f"AI-generated summary of {len(messages)} messages | Powered by Gemini"
+            )
             await interaction.followup.send(embed=embed)
         else:
             # Fallback to basic summary
@@ -760,8 +768,15 @@ async def tldr(interaction: discord.Interaction, count: int):
             summary += f"**Total messages:** {len(messages)}\n\n"
 
             # Show participants
-            authors = list(set([msg.split("]")[1].split(":")[0].strip()
-                           for msg in messages if "]" in msg and ":" in msg]))
+            authors = list(
+                set(
+                    [
+                        msg.split("]")[1].split(":")[0].strip()
+                        for msg in messages
+                        if "]" in msg and ":" in msg
+                    ]
+                )
+            )
             summary += f"**Participants:** {', '.join(authors[:10])}\n\n"
 
             # Show sample messages
@@ -782,7 +797,7 @@ async def tldr(interaction: discord.Interaction, count: int):
             embed = discord.Embed(
                 title="📝 Channel Summary",
                 description=summary,
-                color=discord.Color.orange()
+                color=discord.Color.orange(),
             )
             embed.set_footer(text=f"Analyzed {len(messages)} messages")
             await interaction.followup.send(embed=embed)
@@ -792,19 +807,23 @@ async def tldr(interaction: discord.Interaction, count: int):
 
 
 # ==================== ADMIN COMMANDS ====================
-@bot.tree.command(name="purge", description="Bulk delete messages (requires Manage Messages)")
+@bot.tree.command(
+    name="purge", description="Bulk delete messages (requires Manage Messages)"
+)
 @app_commands.describe(
     count="Input number of messages to search for (max 100)",
     message_link="Paste a message link — deletes all messages after it",
     filter="Filter by message type: all, text, image, voice, links",
 )
-@app_commands.choices(filter=[
-    app_commands.Choice(name="All messages", value="all"),
-    app_commands.Choice(name="Text only", value="text"),
-    app_commands.Choice(name="Images only", value="image"),
-    app_commands.Choice(name="Voice messages only", value="voice"),
-    app_commands.Choice(name="Links only", value="links"),
-])
+@app_commands.choices(
+    filter=[
+        app_commands.Choice(name="All messages", value="all"),
+        app_commands.Choice(name="Text only", value="text"),
+        app_commands.Choice(name="Images only", value="image"),
+        app_commands.Choice(name="Voice messages only", value="voice"),
+        app_commands.Choice(name="Links only", value="links"),
+    ]
+)
 @app_commands.checks.has_permissions(manage_messages=True)
 async def purge(
     interaction: discord.Interaction,
@@ -819,7 +838,9 @@ async def purge(
         count = 100
 
     if count < 1 or count > 100:
-        await interaction.followup.send("❌ Count must be between 1 and 100.", ephemeral=True)
+        await interaction.followup.send(
+            "❌ Count must be between 1 and 100.", ephemeral=True
+        )
         return
 
     # Resolve the anchor message if a link was provided
@@ -851,11 +872,12 @@ async def purge(
             )
         if filter == "voice":
             return any(
-                a.content_type and "ogg" in a.content_type
-                for a in msg.attachments
+                a.content_type and "ogg" in a.content_type for a in msg.attachments
             )
         if filter == "links":
-            return bool(msg.content) and ("http://" in msg.content or "https://" in msg.content)
+            return bool(msg.content) and (
+                "http://" in msg.content or "https://" in msg.content
+            )
         return True
 
     # Purge messages
@@ -875,7 +897,7 @@ async def purge(
 
             # Bulk delete in batches of 100
             for i in range(0, len(to_delete), 100):
-                batch = to_delete[i:i+100]
+                batch = to_delete[i : i + 100]
                 try:
                     await interaction.channel.delete_messages(batch)
                 except Exception:
@@ -890,8 +912,11 @@ async def purge(
             total_deleted = len(deleted)
 
         filter_label = {
-            "all": "messages", "text": "text messages",
-            "image": "images", "voice": "voice messages", "links": "messages with links"
+            "all": "messages",
+            "text": "text messages",
+            "image": "images",
+            "voice": "voice messages",
+            "links": "messages with links",
         }
 
         if total_deleted == 0:
@@ -905,53 +930,64 @@ async def purge(
                 ephemeral=True,
             )
     except discord.Forbidden:
-        await interaction.followup.send("❌ I don't have permission to delete messages here.", ephemeral=True)
+        await interaction.followup.send(
+            "❌ I don't have permission to delete messages here.", ephemeral=True
+        )
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
 
 @purge.error
-async def purge_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+async def purge_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message(
-            "❌ You need **Manage Messages** permission to use this command.", ephemeral=True
+            "❌ You need **Manage Messages** permission to use this command.",
+            ephemeral=True,
         )
 
 
-@bot.tree.command(name="checkroles", description="Debug command to check all server roles (Admin only)")
+@bot.tree.command(
+    name="checkroles",
+    description="Debug command to check all server roles (Admin only)",
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def checkroles(interaction: discord.Interaction):
-    roles_list = [
-        f"• {role.name} (ID: {role.id})" for role in interaction.guild.roles]
+    roles_list = [f"• {role.name} (ID: {role.id})" for role in interaction.guild.roles]
     roles_text = "\n".join(roles_list)
 
     embed = discord.Embed(
         title="🔍 Server Roles Debug",
         description=f"**All roles in this server:**\n{roles_text}",
-        color=discord.Color.blue()
+        color=discord.Color.blue(),
     )
     await interaction.response.send_message(embed=embed)
 
 
-@bot.tree.command(name="welcome", description="Send welcome message for newly verified member (Mod only)")
+@bot.tree.command(
+    name="welcome",
+    description="Send welcome message for newly verified member (Mod only)",
+)
 @app_commands.describe(member="The member to welcome")
 @app_commands.checks.has_permissions(manage_roles=True)
 async def welcome(interaction: discord.Interaction, member: discord.Member):
-    verified_role = discord.utils.get(
-        interaction.guild.roles, name="✔️Verified")
+    verified_role = discord.utils.get(interaction.guild.roles, name="✔️Verified")
 
     if not verified_role:
         await interaction.response.send_message("❌ Verified role not found!")
         return
 
     if verified_role not in member.roles:
-        await interaction.response.send_message(f"❌ {member.mention} doesn't have the Verified role yet!")
+        await interaction.response.send_message(
+            f"❌ {member.mention} doesn't have the Verified role yet!"
+        )
         return
 
-    general_channel = discord.utils.get(
-        interaction.guild.text_channels, name="general")
+    general_channel = discord.utils.get(interaction.guild.text_channels, name="general")
     self_roles_channel = discord.utils.get(
-        interaction.guild.text_channels, name="self-roles")
+        interaction.guild.text_channels, name="self-roles"
+    )
 
     if general_channel:
         if self_roles_channel:
@@ -966,46 +1002,56 @@ async def welcome(interaction: discord.Interaction, member: discord.Member):
             )
 
         await general_channel.send(welcome_message)
-        await interaction.response.send_message(f"✅ Welcome message sent for {member.mention}!")
+        await interaction.response.send_message(
+            f"✅ Welcome message sent for {member.mention}!"
+        )
         print(f"✅ Manual welcome message sent for {member.name}")
     else:
         await interaction.response.send_message("❌ General channel not found!")
 
 
-@bot.tree.command(name="checkintents", description="Check if bot has required intents enabled (Admin only)")
+@bot.tree.command(
+    name="checkintents",
+    description="Check if bot has required intents enabled (Admin only)",
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def checkintents(interaction: discord.Interaction):
     intents_status = []
     intents_status.append(
-        f"{'✅' if bot.intents.members else '❌'} Members Intent: {bot.intents.members}")
+        f"{'✅' if bot.intents.members else '❌'} Members Intent: {bot.intents.members}"
+    )
     intents_status.append(
-        f"{'✅' if bot.intents.guilds else '❌'} Guilds Intent: {bot.intents.guilds}")
+        f"{'✅' if bot.intents.guilds else '❌'} Guilds Intent: {bot.intents.guilds}"
+    )
     intents_status.append(
-        f"{'✅' if bot.intents.message_content else '❌'} Message Content: {bot.intents.message_content}")
+        f"{'✅' if bot.intents.message_content else '❌'} Message Content: {bot.intents.message_content}"
+    )
 
     embed = discord.Embed(
         title="🔍 Bot Intents Status",
         description="\n".join(intents_status),
-        color=discord.Color.green() if bot.intents.members else discord.Color.red()
+        color=discord.Color.green() if bot.intents.members else discord.Color.red(),
     )
 
     if not bot.intents.members:
         embed.add_field(
             name="⚠️ Members Intent Disabled",
             value="You need to enable 'Server Members Intent' in Discord Developer Portal",
-            inline=False
+            inline=False,
         )
     else:
         embed.add_field(
             name="✅ All Good",
             value="The on_member_update event should work. If it's not triggering, try restarting the bot.",
-            inline=False
+            inline=False,
         )
 
     await interaction.response.send_message(embed=embed)
 
 
-@bot.tree.command(name="checkaudit", description="Check recent audit log entries (Admin only)")
+@bot.tree.command(
+    name="checkaudit", description="Check recent audit log entries (Admin only)"
+)
 @app_commands.describe(limit="Number of entries to show (default 10)")
 @app_commands.checks.has_permissions(administrator=True)
 async def checkaudit(interaction: discord.Interaction, limit: int = 10):
@@ -1014,7 +1060,7 @@ async def checkaudit(interaction: discord.Interaction, limit: int = 10):
     try:
         audit_logs = []
         async for entry in interaction.guild.audit_logs(limit=limit):
-            action_type = str(entry.action).replace('AuditLogAction.', '')
+            action_type = str(entry.action).replace("AuditLogAction.", "")
             audit_logs.append(
                 f"**{action_type}** by {entry.user.mention}\n"
                 f"Target: {entry.target}\n"
@@ -1037,7 +1083,7 @@ async def checkaudit(interaction: discord.Interaction, limit: int = 10):
                 embed = discord.Embed(
                     title=f"📋 Recent Audit Log ({i+1}/{len(chunks)})",
                     description=chunk,
-                    color=discord.Color.blue()
+                    color=discord.Color.blue(),
                 )
                 if i == 0:
                     await interaction.followup.send(embed=embed)
@@ -1046,7 +1092,9 @@ async def checkaudit(interaction: discord.Interaction, limit: int = 10):
         else:
             await interaction.followup.send("No audit log entries found.")
     except discord.Forbidden:
-        await interaction.followup.send("❌ Bot doesn't have permission to view audit logs!")
+        await interaction.followup.send(
+            "❌ Bot doesn't have permission to view audit logs!"
+        )
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {str(e)}")
 
@@ -1078,7 +1126,8 @@ async def on_member_join(member):
 async def on_member_remove(member):
     print(f"⚠️ {member.name} ({member.id}) left the server")
     print(
-        f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}")
+        f"   Roles they had: {[role.name for role in member.roles if role.name != '@everyone']}"
+    )
     print(f"   Joined at: {member.joined_at}")
     print(f"   Account created: {member.created_at}")
 
@@ -1086,19 +1135,25 @@ async def on_member_remove(member):
     if verified_role and verified_role in member.roles:
         print(f"   ⚠️ WARNING: This member had the Verified role!")
 
-        logs_channel = discord.utils.get(
-            member.guild.text_channels, name="logs")
+        logs_channel = discord.utils.get(member.guild.text_channels, name="logs")
         if logs_channel:
             embed = discord.Embed(
                 title="⚠️ Verified Member Left",
                 description=f"{member.mention} ({member.name}) left the server",
-                color=discord.Color.orange()
+                color=discord.Color.orange(),
             )
             embed.add_field(name="User ID", value=member.id, inline=True)
             embed.add_field(
-                name="Joined", value=f"<t:{int(member.joined_at.timestamp())}:R>", inline=True)
-            embed.add_field(name="Roles", value=", ".join(
-                [r.name for r in member.roles if r.name != '@everyone']) or "None", inline=False)
+                name="Joined",
+                value=f"<t:{int(member.joined_at.timestamp())}:R>",
+                inline=True,
+            )
+            embed.add_field(
+                name="Roles",
+                value=", ".join([r.name for r in member.roles if r.name != "@everyone"])
+                or "None",
+                inline=False,
+            )
             await logs_channel.send(embed=embed)
 
 
@@ -1127,10 +1182,10 @@ async def on_member_update(before, after):
     if verified_role and verified_role in added_roles:
         print(f"✅ Verified role detected for {after.name}")
 
-        general_channel = discord.utils.get(
-            after.guild.text_channels, name="general")
+        general_channel = discord.utils.get(after.guild.text_channels, name="general")
         self_roles_channel = discord.utils.get(
-            after.guild.text_channels, name="self-roles")
+            after.guild.text_channels, name="self-roles"
+        )
 
         print(f"🔎 General channel: {general_channel}")
         print(f"🔎 Self-roles channel: {self_roles_channel}")
@@ -1151,8 +1206,7 @@ async def on_member_update(before, after):
             print(f"✅ Sent welcome message for {after.name} in general")
         else:
             print(f"❌ General channel not found")
-            print(
-                f"Available channels: {[c.name for c in after.guild.text_channels]}")
+            print(f"Available channels: {[c.name for c in after.guild.text_channels]}")
 
 
 # ==================== MESSAGE LOGS ====================
@@ -1200,9 +1254,29 @@ _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
 LOW_SIGNAL_AI_MESSAGES = {
-    "bot", "check", "test", "testing", "1", "2", "3", "123",
-    "meow", "ah", "ahh", "ahhh", "ahhhh", "aaaa", "aaaaa",
-    "ew", "eww", "ewww", "ewwww", "noew", "wtf", "ok", "okay",
+    "bot",
+    "check",
+    "test",
+    "testing",
+    "1",
+    "2",
+    "3",
+    "123",
+    "meow",
+    "ah",
+    "ahh",
+    "ahhh",
+    "ahhhh",
+    "aaaa",
+    "aaaaa",
+    "ew",
+    "eww",
+    "ewww",
+    "ewwww",
+    "noew",
+    "wtf",
+    "ok",
+    "okay",
 }
 
 
@@ -1264,7 +1338,11 @@ def _pick_ai_custom_emoji(
         candidates += ["yayyyyy", "cybvibe", "vibes_pakruga", "cool_smirk"]
 
     candidates += ["bruh", "kya", "hmmm", "dead", "chas_agai", "cool_smirk"]
-    available = [emoji_tokens_by_name[name] for name in candidates if name in emoji_tokens_by_name]
+    available = [
+        emoji_tokens_by_name[name]
+        for name in candidates
+        if name in emoji_tokens_by_name
+    ]
     return random.choice(available) if available else None
 
 
@@ -1304,11 +1382,27 @@ async def maybe_send_ai_chat_reply(message):
 
     # Serious topic detection — skip only the AI reply, not command handling.
     serious_keywords = [
-        "death", "hospital", "sad", "depressed", "funeral",
-        "hurt", "crying", "suicide", "cancer", "died", "marna",
-        "mar gaya", "rona", "dukh", "takleef", "sympathy",
-        "gonna be fine", "one day u gonna be fine", "missing you",
-        "cuddle", "bbg"
+        "death",
+        "hospital",
+        "sad",
+        "depressed",
+        "funeral",
+        "hurt",
+        "crying",
+        "suicide",
+        "cancer",
+        "died",
+        "marna",
+        "mar gaya",
+        "rona",
+        "dukh",
+        "takleef",
+        "sympathy",
+        "gonna be fine",
+        "one day u gonna be fine",
+        "missing you",
+        "cuddle",
+        "bbg",
     ]
     if any(k in content_lower for k in serious_keywords):
         return
@@ -1328,9 +1422,27 @@ async def maybe_send_ai_chat_reply(message):
     is_active_chat = len(history) >= 4
 
     # Probability based on message vibe
-    funny_keywords = ["lol", "lmao", "haha", "😂", "💀", "bhai", "yaar",
-                      "kya", "oof", "bruh", "wtf", "omg", "😭", "🤣",
-                      "exposed", "ratio", "nahh", "bro", "skill issue"]
+    funny_keywords = [
+        "lol",
+        "lmao",
+        "haha",
+        "😂",
+        "💀",
+        "bhai",
+        "yaar",
+        "kya",
+        "oof",
+        "bruh",
+        "wtf",
+        "omg",
+        "😭",
+        "🤣",
+        "exposed",
+        "ratio",
+        "nahh",
+        "bro",
+        "skill issue",
+    ]
     is_funny = any(k in content_lower for k in funny_keywords)
     base_chance = 0.22 if is_funny else 0.10
     if is_active_chat:
@@ -1347,10 +1459,7 @@ async def maybe_send_ai_chat_reply(message):
         for e in message.guild.emojis
         if not e.animated
     }
-    emoji_names = [
-        token
-        for _, token in sorted(emoji_tokens_by_name.items())
-    ][:75]
+    emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
 
     reply = await fetch_ai_chat_reply(history, emoji_names, cleaned_content)
 
@@ -1383,7 +1492,9 @@ async def on_message(message):
     await maybe_send_ai_chat_reply(message)
 
     # Ignore DMs — all channel-specific logic below requires a guild channel
-    if not message.guild or not isinstance(message.channel, (discord.TextChannel, discord.VoiceChannel, discord.Thread)):
+    if not message.guild or not isinstance(
+        message.channel, (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+    ):
         await bot.process_commands(message)
         return
 
@@ -1397,6 +1508,7 @@ async def on_message(message):
             if message.embeds:
                 title = message.embeds[0].title or ""
                 import re
+
                 match = re.search(r"#(\d+)", title)
                 if match:
                     thread_name = f"💬 Confession #{match.group(1)}"
@@ -1503,8 +1615,7 @@ async def on_message(message):
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
             )
-            embed.set_footer(
-                text="Be genuine and friendly! We're excited to meet you.")
+            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
             new_sticky = await message.channel.send(embed=embed)
             sticky_message_id = new_sticky.id
         except:
@@ -1539,7 +1650,10 @@ async def on_member_join(member: discord.Member):
         cached = getattr(bot, "_invite_cache", {}).get(member.guild.id, [])
         for invite in invites_after:
             for cached_invite in cached:
-                if invite.code == cached_invite.code and invite.uses > cached_invite.uses:
+                if (
+                    invite.code == cached_invite.code
+                    and invite.uses > cached_invite.uses
+                ):
                     inviter = invite.inviter.mention if invite.inviter else "Unknown"
                     break
     except Exception:
@@ -1576,7 +1690,11 @@ async def on_member_remove(member: discord.Member):
     if not channel:
         return
 
-    joined = discord.utils.format_dt(member.joined_at, style="R") if member.joined_at else "Unknown"
+    joined = (
+        discord.utils.format_dt(member.joined_at, style="R")
+        if member.joined_at
+        else "Unknown"
+    )
     roles = [r.mention for r in member.roles if r.name != "@everyone"]
     member_count = member.guild.member_count
 
@@ -1648,8 +1766,7 @@ async def on_ready():
                 ),
                 color=discord.Color.from_rgb(139, 69, 19),
             )
-            embed.set_footer(
-                text="Be genuine and friendly! We're excited to meet you.")
+            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
             sticky_msg = await intro_channel.send(embed=embed)
             sticky_message_id = sticky_msg.id
             print(f"✅ Created sticky intro message")
