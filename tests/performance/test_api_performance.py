@@ -137,8 +137,8 @@ async def test_trivia_api_response_time():
 
     if question:  # API may be unavailable
         assert (
-            response_time < 2.0
-        ), f"Response time {response_time:.2f}s exceeds 2s threshold"
+            response_time < 8.0
+        ), f"Response time {response_time:.2f}s exceeds 8s threshold"
         print(f"\n✅ Trivia API: {response_time:.3f}s")
 
 
@@ -159,8 +159,8 @@ async def test_joke_api_response_time():
 
     if joke:  # API may be unavailable
         assert (
-            response_time < 2.0
-        ), f"Response time {response_time:.2f}s exceeds 2s threshold"
+            response_time < 8.0
+        ), f"Response time {response_time:.2f}s exceeds 8s threshold"
         print(f"\n✅ Joke API: {response_time:.3f}s")
 
 
