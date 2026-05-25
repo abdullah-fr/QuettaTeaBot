@@ -1,9 +1,9 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import View, Button
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 try:
@@ -767,6 +767,7 @@ async def tldr(interaction: discord.Interaction, count: int):
             await interaction.followup.send(embed=embed)
 
     except Exception as e:
+        logger.exception("tldr summary failed")
         await interaction.followup.send(f"❌ Error creating summary: {str(e)}")
 
 
@@ -896,6 +897,7 @@ async def purge(
             "❌ I don't have permission to delete messages here.", ephemeral=True
         )
     except Exception as e:
+        logger.exception("purge command failed")
         await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
 
@@ -1058,6 +1060,7 @@ async def checkaudit(interaction: discord.Interaction, limit: int = 10):
             "❌ Bot doesn't have permission to view audit logs!"
         )
     except Exception as e:
+        logger.exception("checkaudit command failed")
         await interaction.followup.send(f"❌ Error: {str(e)}")
 
 
@@ -1137,8 +1140,8 @@ async def on_message_delete(message):
                 ):
                     deleted_by = entry.user.mention
                     break
-        except Exception as e:
-            print(f"Error fetching audit log: {e}")
+        except Exception:
+            logger.exception("audit log fetch failed")
 
         embed = discord.Embed(
             title="🗑️ Message Deleted",
@@ -1384,8 +1387,8 @@ async def maybe_send_ai_chat_reply(message):
         _user_cooldowns[user_id] = now
         _last_replied_users[channel_id] = user_id
         print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
-    except Exception as e:
-        print(f"❌ AI reply error: {e}")
+    except Exception:
+        logger.exception("AI chat reply failed")
 
 
 @bot.event
@@ -1676,10 +1679,39 @@ async def on_ready_invite_cache():
 
 
 # ==================== BOT READY ====================
+_bot_started_at: datetime | None = None
+
+
+@tasks.loop(minutes=5)
+async def heartbeat_log():
+    """Periodic structured heartbeat so silent disconnects are detectable."""
+    if _bot_started_at is None:
+        return
+    uptime = datetime.now(timezone.utc) - _bot_started_at
+    logger.info(
+        "heartbeat",
+        extra={
+            "uptime_seconds": int(uptime.total_seconds()),
+            "guilds": len(bot.guilds),
+            "latency_ms": round(bot.latency * 1000, 1),
+            "user": str(bot.user) if bot.user else None,
+        },
+    )
+
+
 @bot.event
 async def on_ready():
-    global sticky_message_id
+    global sticky_message_id, _bot_started_at
 
+    if _bot_started_at is None:
+        _bot_started_at = datetime.now(timezone.utc)
+    if not heartbeat_log.is_running():
+        heartbeat_log.start()
+
+    logger.info(
+        "bot online",
+        extra={"user": str(bot.user), "guilds": len(bot.guilds)},
+    )
     print(f"✅ {bot.user} is online!")
     print("🤖 FULLY AUTOMATED BOT - Everything runs automatically!")
     print("📡 All features use unlimited APIs")
@@ -1730,8 +1762,8 @@ async def on_ready():
         bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
         print("✅ Guild sync complete")
-    except Exception as e:
-        print(f"❌ Failed to sync commands: {e}")
+    except Exception:
+        logger.exception("command sync failed")
 
     # Cache invites for join tracking
     bot._invite_cache = {}
