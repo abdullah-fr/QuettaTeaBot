@@ -35,7 +35,8 @@ async def test_prayer_times_api_response_time():
     """
     Performance Test: Prayer times API response time
 
-    Baseline: Should respond within 2 seconds
+    Baseline: Should respond within 8 seconds (allows for retry_async's
+    two-retry budget of up to ~2.4s plus normal network variance from CI).
     """
     bot = RamadanBot(
         bot=None,
@@ -52,7 +53,9 @@ async def test_prayer_times_api_response_time():
 
     # Verify response time is acceptable
     assert timings is not None
-    assert response_time < 2.0, f"Response time {response_time:.2f}s exceeds 2s threshold"
+    assert (
+        response_time < 8.0
+    ), f"Response time {response_time:.2f}s exceeds 8s threshold"
 
     print(f"\n✅ Prayer Times API: {response_time:.3f}s")
 
@@ -63,7 +66,8 @@ async def test_hadith_api_response_time():
     """
     Performance Test: Hadith API response time
 
-    Baseline: Should respond within 2 seconds
+    Baseline: Should respond within 8 seconds (allows for retry_async's
+    two-retry budget of up to ~2.4s plus normal network variance from CI).
     """
     bot = RamadanBot(
         bot=None,
@@ -79,7 +83,9 @@ async def test_hadith_api_response_time():
     response_time = end_time - start_time
 
     assert hadith is not None
-    assert response_time < 2.0, f"Response time {response_time:.2f}s exceeds 2s threshold"
+    assert (
+        response_time < 8.0
+    ), f"Response time {response_time:.2f}s exceeds 8s threshold"
 
     print(f"\n✅ Hadith API: {response_time:.3f}s")
 
@@ -90,7 +96,8 @@ async def test_ayat_api_response_time():
     """
     Performance Test: Ayat API response time
 
-    Baseline: Should respond within 2 seconds
+    Baseline: Should respond within 8 seconds (allows for retry_async's
+    two-retry budget of up to ~2.4s plus normal network variance from CI).
     """
     bot = RamadanBot(
         bot=None,
@@ -106,7 +113,9 @@ async def test_ayat_api_response_time():
     response_time = end_time - start_time
 
     assert ayat is not None
-    assert response_time < 2.0, f"Response time {response_time:.2f}s exceeds 2s threshold"
+    assert (
+        response_time < 8.0
+    ), f"Response time {response_time:.2f}s exceeds 8s threshold"
 
     print(f"\n✅ Ayat API: {response_time:.3f}s")
 
@@ -117,7 +126,8 @@ async def test_trivia_api_response_time():
     """
     Performance Test: Trivia API response time
 
-    Baseline: Should respond within 2 seconds
+    Baseline: Should respond within 8 seconds (allows for retry_async's
+    two-retry budget of up to ~2.4s plus normal network variance from CI).
     """
     start_time = time.time()
     question = await fetch_trivia_question()
@@ -126,7 +136,9 @@ async def test_trivia_api_response_time():
     response_time = end_time - start_time
 
     if question:  # API may be unavailable
-        assert response_time < 2.0, f"Response time {response_time:.2f}s exceeds 2s threshold"
+        assert (
+            response_time < 8.0
+        ), f"Response time {response_time:.2f}s exceeds 8s threshold"
         print(f"\n✅ Trivia API: {response_time:.3f}s")
 
 
@@ -136,7 +148,8 @@ async def test_joke_api_response_time():
     """
     Performance Test: Joke API response time
 
-    Baseline: Should respond within 2 seconds
+    Baseline: Should respond within 8 seconds (allows for retry_async's
+    two-retry budget of up to ~2.4s plus normal network variance from CI).
     """
     start_time = time.time()
     joke = await fetch_joke()
@@ -145,7 +158,9 @@ async def test_joke_api_response_time():
     response_time = end_time - start_time
 
     if joke:  # API may be unavailable
-        assert response_time < 2.0, f"Response time {response_time:.2f}s exceeds 2s threshold"
+        assert (
+            response_time < 8.0
+        ), f"Response time {response_time:.2f}s exceeds 8s threshold"
         print(f"\n✅ Joke API: {response_time:.3f}s")
 
 
@@ -197,7 +212,9 @@ async def test_concurrent_prayer_times_requests():
         total_time < 10.0
     ), f"Concurrent requests took {total_time:.2f}s (threshold: 10s)"
 
-    print(f"\n✅ Concurrent Requests (5): {total_time:.3f}s, {len(successful)}/5 succeeded")
+    print(
+        f"\n✅ Concurrent Requests (5): {total_time:.3f}s, {len(successful)}/5 succeeded"
+    )
     print(f"   Success Rate: {len(successful)}/5")
 
 

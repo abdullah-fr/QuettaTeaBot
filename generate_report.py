@@ -18,9 +18,7 @@ def run_tests_and_generate_report():
 
     # Run pytest with JSON output
     result = subprocess.run(
-        ['pytest', 'tests/', '-v', '--tb=short'],
-        capture_output=False,
-        text=True
+        ["pytest", "tests/", "-v", "--tb=short"], capture_output=False, text=True
     )
 
     print("-" * 60)
@@ -31,7 +29,7 @@ def run_tests_and_generate_report():
         print(f"⚠️  Some tests failed (exit code: {result.returncode})")
 
     # Check if report was generated
-    report_path = Path('reports/test_report.html')
+    report_path = Path("reports/test_report.html")
     if report_path.exists():
         print(f"\n✨ Custom HTML report generated successfully!")
         print(f"📊 Report location: {report_path.absolute()}")

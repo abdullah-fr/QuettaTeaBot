@@ -2,6 +2,7 @@
 Test for verified role welcome message feature
 This test simulates the on_member_update event
 """
+
 import asyncio
 from unittest.mock import MagicMock, AsyncMock
 

@@ -154,7 +154,9 @@ async def test_sustained_load():
         await asyncio.sleep(request_interval)
 
     total_requests = successful_requests + failed_requests
-    success_rate = successful_requests / total_requests * 100 if total_requests > 0 else 0
+    success_rate = (
+        successful_requests / total_requests * 100 if total_requests > 0 else 0
+    )
 
     print(f"\n✅ Sustained Load Test:")
     print(f"   Duration: {duration}s")
