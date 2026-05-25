@@ -2,195 +2,236 @@ import aiohttp
 import json
 import random
 import html
-import os
-from pathlib import Path
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+try:
+    from config import settings
+    from logging_config import get_logger
+except ImportError:
+    from .config import settings
+    from .logging_config import get_logger
+from .retry_utils import HttpStatusError, RetryError, retry_async
+
+logger = get_logger(__name__)
+
+
+async def _fetch_json(
+    url: str,
+    headers: dict[str, str] | None = None,
+    params: dict[str, str] | None = None,
+    timeout: int = 15,
+) -> dict | list | None:
+    async def _request() -> dict | list | None:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                headers=headers,
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as resp:
+                text = await resp.text()
+                if resp.status in (429, 500, 502, 503, 504):
+                    raise HttpStatusError(resp.status, text)
+                if resp.status != 200:
+                    logger.warning(
+                        "Non-success HTTP status",
+                        extra={"url": url, "status": resp.status, "body": text[:300]},
+                    )
+                    return None
+                return await resp.json()
+
+    try:
+        return await retry_async(
+            _request,
+            retries=2,
+            delay=0.8,
+            backoff=2.0,
+            log_message=f"HTTP GET retry for {url}",
+        )
+    except RetryError:
+        logger.error("Failed to fetch JSON after retries", extra={"url": url})
+        return None
+
+
+async def _fetch_text(
+    url: str,
+    headers: dict[str, str] | None = None,
+    timeout: int = 15,
+) -> str | None:
+    async def _request() -> str | None:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as resp:
+                text = await resp.text()
+                if resp.status in (429, 500, 502, 503, 504):
+                    raise HttpStatusError(resp.status, text)
+                if resp.status != 200:
+                    logger.warning(
+                        "Non-success HTTP status",
+                        extra={"url": url, "status": resp.status, "body": text[:300]},
+                    )
+                    return None
+                return text
+
+    try:
+        return await retry_async(
+            _request,
+            retries=2,
+            delay=0.8,
+            backoff=2.0,
+            log_message=f"HTTP GET retry for {url}",
+        )
+    except RetryError:
+        logger.error("Failed to fetch text after retries", extra={"url": url})
+        return None
 
 
 # ==================== TRIVIA API ====================
 async def fetch_trivia_question():
     """Fetch unlimited trivia from Open Trivia Database"""
+    data = await _fetch_json("https://opentdb.com/api.php?amount=1&type=multiple")
+    if not data or data.get("response_code") != 0:
+        return None
+
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://opentdb.com/api.php?amount=1&type=multiple"
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data["response_code"] == 0:
-                        q_data = data["results"][0]
-                        question = html.unescape(q_data["question"])
-                        correct = html.unescape(q_data["correct_answer"])
-                        incorrect = [
-                            html.unescape(ans) for ans in q_data["incorrect_answers"]
-                        ]
-                        options = incorrect + [correct]
-                        random.shuffle(options)
-                        return {"q": question, "a": correct, "options": options}
-    except Exception as e:
-        print(f"Trivia API error: {e}")
-    return None
+        q_data = data["results"][0]
+        question = html.unescape(q_data["question"])
+        correct = html.unescape(q_data["correct_answer"])
+        incorrect = [html.unescape(ans) for ans in q_data["incorrect_answers"]]
+        options = incorrect + [correct]
+        random.shuffle(options)
+        return {"q": question, "a": correct, "options": options}
+    except Exception:
+        logger.exception("Trivia API error")
+        return None
 
 
 # ==================== RIDDLE API ====================
 async def fetch_riddle():
     """Fetch riddles from API Ninjas"""
+    headers = {
+        "X-Api-Key": (
+            settings.api_ninjas_key.get_secret_value()
+            if settings.api_ninjas_key
+            else ""
+        )
+    }
+    data = await _fetch_json("https://api.api-ninjas.com/v1/riddles", headers=headers)
+    if not data:
+        return None
+
     try:
-        async with aiohttp.ClientSession() as session:
-            headers = {"X-Api-Key": os.getenv("API_NINJAS_KEY", "")}
-            async with session.get(
-                "https://api.api-ninjas.com/v1/riddles", headers=headers
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data:
-                        return {"q": data[0]["question"], "a": data[0]["answer"]}
-    except Exception as e:
-        print(f"Riddle API error: {e}")
-    return None
+        return {"q": data[0]["question"], "a": data[0]["answer"]}
+    except Exception:
+        logger.exception("Riddle API error")
+        return None
 
 
 # ==================== JOKE API ====================
 async def fetch_joke():
     """Fetch jokes from JokeAPI"""
+    data = await _fetch_json("https://v2.jokeapi.dev/joke/Any?safe-mode")
+    if not data:
+        return None
+
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://v2.jokeapi.dev/joke/Any?safe-mode") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data["type"] == "single":
-                        return data["joke"]
-                    else:
-                        return f"{data['setup']}\n{data['delivery']}"
-    except Exception as e:
-        print(f"Joke API error: {e}")
-    return None
+        if data["type"] == "single":
+            return data["joke"]
+        return f"{data['setup']}\n{data['delivery']}"
+    except Exception:
+        logger.exception("Joke API error")
+        return None
 
 
 # ==================== QOTD API (Unlimited) ====================
 async def fetch_qotd():
     """Fetch unlimited conversation questions"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://api.quotable.io/quotes/random?limit=1"
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data and len(data) > 0:
-                        return f"Reflect on this: \"{data[0]['content']}\" - What are your thoughts?"
-    except Exception as e:
-        print(f"QOTD API error: {e}")
+    data = await _fetch_json("https://api.quotable.io/quotes/random?limit=1")
+    if data and len(data) > 0:
+        try:
+            return (
+                f"Reflect on this: \"{data[0]['content']}\" - What are your thoughts?"
+            )
+        except Exception:
+            logger.exception("QOTD API error")
 
     # Fallback: Use philosophy questions
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://opentdb.com/api.php?amount=1&category=9"
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data["response_code"] == 0:
-                        q_data = data["results"][0]
-                        question = html.unescape(q_data["question"])
-                        return f"What do you think: {question}"
-    except Exception as e:
-        print(f"QOTD Fallback error: {e}")
+    data = await _fetch_json("https://opentdb.com/api.php?amount=1&category=9")
+    if not data or data.get("response_code") != 0:
+        return None
 
-    return None
+    try:
+        q_data = data["results"][0]
+        question = html.unescape(q_data["question"])
+        return f"What do you think: {question}"
+    except Exception:
+        logger.exception("QOTD Fallback error")
+        return None
 
 
 # ==================== WOULD YOU RATHER API ====================
 async def fetch_wyr():
     """Fetch unlimited Would You Rather questions"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://api.truthordarebot.xyz/v1/wyr") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if "question" in data:
-                        return data["question"]
-    except Exception as e:
-        print(f"WYR API error: {e}")
+    data = await _fetch_json("https://api.truthordarebot.xyz/v1/wyr")
+    if data and "question" in data:
+        return data["question"]
 
     # Fallback: Generate from two random activities
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://www.boredapi.com/api/activity") as resp1:
-                async with session.get(
-                    "https://www.boredapi.com/api/activity"
-                ) as resp2:
-                    if resp1.status == 200 and resp2.status == 200:
-                        data1 = await resp1.json()
-                        data2 = await resp2.json()
-                        return f"Would you rather {data1['activity'].lower()} or {data2['activity'].lower()}?"
-    except Exception as e:
-        print(f"WYR Fallback error: {e}")
+    data1 = await _fetch_json("https://www.boredapi.com/api/activity")
+    data2 = await _fetch_json("https://www.boredapi.com/api/activity")
+    if not data1 or not data2 or "activity" not in data1 or "activity" not in data2:
+        return None
 
-    return None
+    try:
+        return (
+            f"Would you rather {data1['activity'].lower()} or "
+            f"{data2['activity'].lower()}?"
+        )
+    except Exception:
+        logger.exception("WYR Fallback error")
+        return None
 
 
 # ==================== CONVERSATION STARTER API ====================
 async def fetch_conversation_starter():
     """Fetch unlimited conversation starters"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://api.adviceslip.com/advice",
-                headers={"Accept": "application/json"},
-            ) as resp:
-                if resp.status == 200:
-                    text = await resp.text()
-                    data = json.loads(text)
-                    if "slip" in data:
-                        return f"Let's talk about: {data['slip']['advice']}"
-    except Exception as e:
-        print(f"Conversation API error: {e}")
+    text = await _fetch_text(
+        "https://api.adviceslip.com/advice",
+        headers={"Accept": "application/json"},
+    )
+    if text:
+        try:
+            data = json.loads(text)
+            if "slip" in data:
+                return f"Let's talk about: {data['slip']['advice']}"
+        except Exception:
+            logger.exception("Conversation API error")
 
     # Fallback: Random interesting fact
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://uselessfacts.jsph.pl/random.json?language=en"
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if "text" in data:
-                        return f"Interesting fact: {data['text']} - What do you think?"
-    except Exception as e:
-        print(f"Conversation Fallback error: {e}")
+    data = await _fetch_json("https://uselessfacts.jsph.pl/random.json?language=en")
+    if not data or "text" not in data:
+        return None
 
-    return None
+    try:
+        return f"Interesting fact: {data['text']} - What do you think?"
+    except Exception:
+        logger.exception("Conversation Fallback error")
+        return None
 
 
 # ==================== COMPLIMENT API ====================
 async def fetch_compliment():
     """Fetch unlimited compliments"""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://compliments-api.herokuapp.com/compliment"
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if "compliment" in data:
-                        return data["compliment"]
-    except Exception as e:
-        print(f"Compliment API error: {e}")
+    data = await _fetch_json("https://compliments-api.herokuapp.com/compliment")
+    if data and "compliment" in data:
+        return data["compliment"]
 
     # Fallback: Affirmations
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://www.affirmations.dev/") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if "affirmation" in data:
-                        return data["affirmation"]
-    except Exception as e:
-        print(f"Compliment Fallback error: {e}")
+    data = await _fetch_json("https://www.affirmations.dev/")
+    if data and "affirmation" in data:
+        return data["affirmation"]
 
     return None
 
@@ -206,9 +247,11 @@ async def fetch_roast():
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text):
     """Generate conversation summary using Groq (free)"""
-    groq_key = os.getenv("GROQ_API_KEY")
+    groq_key = (
+        settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+    )
     if not groq_key:
-        print("⚠️ GROQ_API_KEY not set. Get free key from https://console.groq.com")
+        logger.warning("GROQ_API_KEY not set. Skipping Groq requests.")
         return None
     return await _groq_request(
         api_key=groq_key,
@@ -234,9 +277,13 @@ async def fetch_ai_summary(messages_text):
     )
 
 
-async def fetch_ai_chat_reply(recent_messages: list[str], server_emojis: list[str]) -> str | None:
+async def fetch_ai_chat_reply(
+    recent_messages: list[str], server_emojis: list[str]
+) -> str | None:
     """Generate a witty, context-aware chat reply using Groq."""
-    groq_key = os.getenv("GROQ_API_KEY")
+    groq_key = (
+        settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+    )
     if not groq_key:
         return None
 
@@ -246,8 +293,8 @@ async def fetch_ai_chat_reply(recent_messages: list[str], server_emojis: list[st
     return await _groq_request(
         api_key=groq_key,
         system=(
-            "You are QuettaTeaBot, a funny, witty, slightly chaotic Discord bot member "
-            "in a Pakistani/South Asian community server called Quetta Tea Corner. "
+            "You are QuettaTeaBot, a funny, witty, slightly chaotic bot member "
+            "in a Pakistani/South Asian server called Quetta Tea Corner. "
             "You talk like a real server member — casual Urdu/English mix is fine. "
             "You are NOT a helpful assistant. You are a funny, sarcastic, hype-giving "
             "community member who occasionally roasts, hypes, acts confused, or drops "
@@ -255,7 +302,8 @@ async def fetch_ai_chat_reply(recent_messages: list[str], server_emojis: list[st
             "STRICT STYLE RULES:\n"
             "- Keep replies under 12 words MOST of the time\n"
             "- Sometimes use lowercase only\n"
-            "- Sometimes send short reactions only (e.g. 'bro 💀', 'nahh', 'average activities')\n"
+            "- Sometimes send short reactions only (e.g. 'bro 💀', 'nahh', "
+            "  'average activities')\n"
             "- Sometimes act confused\n"
             "- Sometimes roast lightly\n"
             "- Never start with 'lol' every time\n"
@@ -286,33 +334,50 @@ async def _groq_request(
     temperature: float = 0.7,
 ) -> str | None:
     """Shared Groq API call using aiohttp."""
-    try:
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    async def _request():
         async with aiohttp.ClientSession() as session:
-            payload = {
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            }
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
             async with session.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 json=payload,
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data["choices"][0]["message"]["content"].strip()
-                else:
-                    err = await resp.text()
-                    print(f"❌ Groq error {resp.status}: {err}")
-    except Exception as e:
-        print(f"❌ Groq request error: {e}")
+                text = await resp.text()
+                if resp.status in (429, 500, 502, 503, 504):
+                    raise HttpStatusError(resp.status, text)
+                if resp.status != 200:
+                    logger.error(
+                        "Groq API error", extra={"status": resp.status, "body": text}
+                    )
+                    return None
+
+                data = json.loads(text)
+                return data["choices"][0]["message"]["content"].strip()
+
+    try:
+        return await retry_async(
+            _request,
+            retries=2,
+            delay=0.8,
+            backoff=2.0,
+            log_message="Groq request retry",
+        )
+    except RetryError:
+        logger.error("Failed to fetch Groq response after retries")
+    except Exception:
+        logger.exception("Groq request error")
     return None

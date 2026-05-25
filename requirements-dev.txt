@@ -1,0 +1,7 @@
+pytest
+pytest-asyncio
+anyio
+pytest-cov
+black
+flake8
+mypy

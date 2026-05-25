@@ -2,13 +2,18 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Button
-import os
 import random
 import json
 from datetime import datetime
-from dotenv import load_dotenv
 import asyncio
 from pathlib import Path
+
+try:
+    from config import settings
+    from logging_config import configure_logging, get_logger
+except ImportError:
+    from .config import settings
+    from .logging_config import configure_logging, get_logger
 
 # Import our modules
 from question_bank import *
@@ -24,12 +29,15 @@ from api_helpers import (
 )
 from music_player import setup_music_commands
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+# Configure structured logging
+configure_logging()
+logger = get_logger(__name__)
 
 # Bot setup with intents
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 _music_controller = setup_music_commands(bot)
+logger.info("Bot initialized", extra={"command_prefix": "!"})
 
 # Store sticky message ID
 sticky_message_id = None
@@ -38,7 +46,7 @@ sticky_message_id = None
 _DEFAULT_DATA_FILE = str(
     (Path(__file__).resolve().parent.parent / "data" / "bot_data.json")
 )
-DATA_FILE = os.getenv("BOT_DATA_FILE", _DEFAULT_DATA_FILE)
+DATA_FILE = settings.bot_data_file
 
 
 def _ensure_data_file():
@@ -1679,4 +1687,4 @@ async def on_invite_create(invite: discord.Invite):
 
 
 # ==================== RUN BOT ====================
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(settings.get_discord_token())

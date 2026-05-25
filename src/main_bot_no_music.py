@@ -2,11 +2,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Button
-import os
 import random
 import json
 from datetime import datetime
-from dotenv import load_dotenv
+try:
+    from config import settings
+except ImportError:
+    from .config import settings
+
 import asyncio
 from pathlib import Path
 
@@ -23,8 +26,6 @@ from api_helpers import (
     fetch_ai_chat_reply,
 )
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
-
 # Bot setup with intents
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -36,7 +37,7 @@ sticky_message_id = None
 _DEFAULT_DATA_FILE = str(
     (Path(__file__).resolve().parent.parent / "data" / "bot_data.json")
 )
-DATA_FILE = os.getenv("BOT_DATA_FILE", _DEFAULT_DATA_FILE)
+DATA_FILE = settings.bot_data_file
 
 
 def _ensure_data_file():
@@ -1669,4 +1670,4 @@ async def on_invite_create(invite: discord.Invite):
 
 
 # ==================== RUN BOT ====================
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(settings.get_discord_token())

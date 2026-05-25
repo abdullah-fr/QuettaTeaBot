@@ -8,6 +8,11 @@ from urllib.parse import urlparse
 import discord
 from discord import app_commands
 
+try:
+    from config import settings
+except ImportError:
+    from .config import settings
+
 
 MAX_QUEUE_SIZE = 50
 SEARCH_LIMIT = 5
@@ -115,12 +120,18 @@ def _parse_browser_cookie_spec(spec: str) -> tuple[str, Optional[str], Optional[
 def _cookie_options_from_env() -> dict:
     options = {}
 
-    cookie_file = os.getenv("YTDLP_COOKIES_FILE") or os.getenv("YOUTUBE_COOKIES_FILE")
+    cookie_file = (
+        settings.yt_dlp_cookies_file
+        or os.getenv("YTDLP_COOKIES_FILE")
+        or os.getenv("YOUTUBE_COOKIES_FILE")
+    )
     if cookie_file:
         options["cookiefile"] = os.path.expanduser(cookie_file)
 
-    browser_spec = os.getenv("YTDLP_COOKIES_BROWSER") or os.getenv(
-        "YOUTUBE_COOKIES_BROWSER"
+    browser_spec = (
+        settings.yt_dlp_cookies_browser
+        or os.getenv("YTDLP_COOKIES_BROWSER")
+        or os.getenv("YOUTUBE_COOKIES_BROWSER")
     )
     if browser_spec:
         options["cookiesfrombrowser"] = _parse_browser_cookie_spec(browser_spec)
@@ -129,7 +140,11 @@ def _cookie_options_from_env() -> dict:
 
 
 def _js_runtime_options_from_env() -> dict:
-    runtime_spec = os.getenv("YTDLP_JS_RUNTIME") or os.getenv("YOUTUBE_JS_RUNTIME")
+    runtime_spec = (
+        settings.yt_dlp_js_runtime
+        or os.getenv("YTDLP_JS_RUNTIME")
+        or os.getenv("YOUTUBE_JS_RUNTIME")
+    )
     runtimes = runtime_spec or "node"
     enabled_runtimes = {
         runtime.strip().lower(): {}
