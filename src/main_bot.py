@@ -3,16 +3,16 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Button
 import random
-import json
 from datetime import datetime
 import asyncio
-from pathlib import Path
 
 try:
     from config import settings
+    from data_store import JsonDataStore
     from logging_config import configure_logging, get_logger
 except ImportError:
     from .config import settings
+    from .data_store import JsonDataStore
     from .logging_config import configure_logging, get_logger
 
 # Import our modules
@@ -42,52 +42,9 @@ logger.info("Bot initialized", extra={"command_prefix": "!"})
 # Store sticky message ID
 sticky_message_id = None
 
-# Data storage
-_DEFAULT_DATA_FILE = str(
-    (Path(__file__).resolve().parent.parent / "data" / "bot_data.json")
-)
-DATA_FILE = settings.bot_data_file
-
-
-def _ensure_data_file():
-    """Create the data file with default structure if it does not exist."""
-    path = Path(DATA_FILE)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists():
-        path.write_text(
-            json.dumps(
-                {
-                    "pet_system": {},
-                    "vc_time": {},
-                    "trivia_scores": {},
-                },
-                indent=4,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-
-
-def load_data():
-    """Load bot data from the JSON file, creating it if necessary."""
-    _ensure_data_file()
-    try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        _ensure_data_file()
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-
-def save_data(data):
-    """Persist bot data to the JSON file."""
-    _ensure_data_file()
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
-
-
-bot_data = load_data()
+# Data storage (async-safe; serializes writes, atomic on-disk swap)
+data_store = JsonDataStore(settings.bot_data_file)
+bot_data = data_store.load_sync()
 
 # ---------- COLOR ROLES (37 remaining after cleanup) ----------
 COLOR_ROLES = {
@@ -311,7 +268,7 @@ async def reveal_trivia_answer(trivia_id):
                 bot_data["trivia_scores"][user_id] = 0
             bot_data["trivia_scores"][user_id] += 1
 
-    save_data(bot_data)
+    await data_store.save(bot_data)
 
     embed = discord.Embed(
         title="🎯 Trivia Results!",
@@ -550,7 +507,7 @@ async def on_voice_state_update(member, before, after):
 
     if before.channel is None and after.channel is not None:
         bot_data["vc_time"][server_key]["join_time"] = datetime.now().isoformat()
-        save_data(bot_data)
+        await data_store.save(bot_data)
         print(f"✅ {member.name} joined VC in {member.guild.name} at {datetime.now()}")
 
     elif before.channel is not None and after.channel is None:
@@ -562,7 +519,7 @@ async def on_voice_state_update(member, before, after):
 
             bot_data["vc_time"][server_key]["total_minutes"] += duration
             del bot_data["vc_time"][server_key]["join_time"]
-            save_data(bot_data)
+            await data_store.save(bot_data)
             print(
                 f"✅ {member.name} left VC in {member.guild.name}. Session: {duration:.1f} min, Total: {bot_data['vc_time'][server_key]['total_minutes']:.1f} min"
             )
@@ -578,7 +535,7 @@ async def vctime(interaction: discord.Interaction):
 
     if server_key not in bot_data["vc_time"]:
         bot_data["vc_time"][server_key] = {"total_minutes": 0}
-        save_data(bot_data)
+        await data_store.save(bot_data)
 
     total_minutes = bot_data["vc_time"][server_key].get("total_minutes", 0)
 
@@ -677,7 +634,7 @@ async def adopt(interaction: discord.Interaction):
 
     pet = random.choice(PETS)
     bot_data["pet_system"][user_id] = {"pet": pet, "hunger": 100, "happiness": 100}
-    save_data(bot_data)
+    await data_store.save(bot_data)
 
     embed = discord.Embed(
         title="🎉 Pet Adopted!",
