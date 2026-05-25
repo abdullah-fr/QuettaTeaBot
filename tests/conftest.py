@@ -56,8 +56,6 @@ def pytest_runtest_logreport(report):
 
 def pytest_sessionfinish(session, exitstatus):
     """Called at the end of test session"""
-    global start_time
-
     if start_time:
         test_results["duration"] = time.time() - start_time
 
