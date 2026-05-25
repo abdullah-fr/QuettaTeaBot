@@ -15,7 +15,14 @@ except ImportError:
 import asyncio
 
 # Import our modules
-from question_bank import *
+from question_bank import (
+    COMPLIMENTS,
+    PETS,
+    QOTD_QUESTIONS,
+    ROASTS,
+    URDU_POETRY,
+    WYR_QUESTIONS,
+)
 from api_helpers import (
     fetch_trivia_question,
     fetch_riddle,
@@ -67,7 +74,7 @@ COLOR_ROLES = {
     "Powder": discord.Color.from_rgb(173, 216, 230),
     "Vanilla": discord.Color.from_rgb(255, 239, 213),
     "Linen": discord.Color.from_rgb(250, 240, 230),
-    "Fire": discord.Color.from_rgb(255, 0, 0),
+    "Fire": discord.Color.from_rgb(255, 69, 0),
     "Neon": discord.Color.from_rgb(0, 255, 0),
     "Plasma": discord.Color.from_rgb(255, 0, 255),
     "Laser": discord.Color.from_rgb(0, 255, 255),
