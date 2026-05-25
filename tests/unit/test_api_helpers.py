@@ -89,7 +89,7 @@ async def test_fetch_ai_summary_returns_none_when_no_groq_key(monkeypatch):
 
 async def test_fetch_ai_chat_reply_returns_none_when_no_groq_key(monkeypatch):
     monkeypatch.setattr(api_helpers.settings, "groq_api_key", None)
-    assert await api_helpers.fetch_ai_chat_reply(["hi"], ["smile"]) is None
+    assert await api_helpers.fetch_ai_chat_reply(["hi"], ["smile"], "bro what") is None
 
 
 async def test_fetch_ai_chat_reply_returns_groq_response(monkeypatch):
@@ -108,12 +108,60 @@ async def test_fetch_ai_chat_reply_returns_groq_response(monkeypatch):
     monkeypatch.setattr(api_helpers, "_groq_request", fake_groq_request)
 
     reply = await api_helpers.fetch_ai_chat_reply(
-        ["how's everyone", "kuch nahi yaar"], ["smile", "cry"]
+        ["how's everyone", "kuch nahi yaar"],
+        ["smile", "cry"],
+        "skill issue",
     )
     assert reply == "bro got cooked 💀"
     assert captured["api_key"] == "fake-groq-key"
     assert "smile, cry" in captured["system"]
     assert "kuch nahi yaar" in captured["user"]
+    # The trigger message must be highlighted to the model.
+    assert "skill issue" in captured["user"]
+    assert "REACT TO THIS MESSAGE" in captured["user"]
+
+
+async def test_fetch_ai_chat_reply_passes_avoid_phrases(monkeypatch):
+    monkeypatch.setattr(
+        api_helpers.settings, "groq_api_key", SecretStr("fake-groq-key")
+    )
+
+    captured = {}
+
+    async def fake_groq_request(api_key, system, user, max_tokens=200, temperature=0.7):
+        captured["user"] = user
+        return "fresh reply"
+
+    monkeypatch.setattr(api_helpers, "_groq_request", fake_groq_request)
+
+    await api_helpers.fetch_ai_chat_reply(
+        ["context"],
+        [],
+        "bro that's wild",
+        avoid_phrases=["nahh", "average faisalabad behaviour", "bro 💀"],
+    )
+
+    assert "DO NOT repeat" in captured["user"]
+    assert "average faisalabad behaviour" in captured["user"]
+
+
+def test_trim_history_to_budget_drops_oldest_when_overflowing():
+    long_line = "x" * 600
+    kept = api_helpers._trim_history_to_budget(
+        [long_line, long_line, long_line, long_line], budget=1500
+    )
+    # 600+1 * 4 = 2404 -> only the last 2 fit (1202 chars)
+    assert len(kept) == 2
+
+
+def test_trim_history_to_budget_keeps_at_least_one_message():
+    huge = "x" * 5000
+    kept = api_helpers._trim_history_to_budget([huge], budget=100)
+    assert kept == [huge]
+
+
+def test_trim_history_to_budget_handles_empty():
+    assert api_helpers._trim_history_to_budget([], budget=100) == []
 
 
 async def test_fetch_ai_summary_passes_messages_to_groq(monkeypatch):

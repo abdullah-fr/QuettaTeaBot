@@ -1153,12 +1153,16 @@ async def on_message_delete(message):
 
 
 # ==================== INTELLIGENT AUTO-REPLY SYSTEM ====================
+from collections import deque
+
 # Cooldowns: per-channel and per-user to avoid spam
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
+_recent_bot_replies: dict[int, deque[str]] = {}
+_RECENT_REPLIES_PER_CHANNEL = 6
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
@@ -1253,6 +1257,35 @@ def _pick_ai_custom_emoji(
     return random.choice(available) if available else None
 
 
+def _normalize_for_similarity(text: str) -> str:
+    import re
+
+    text = re.sub(r"<a?:[A-Za-z0-9_~]+:\d+>", "", text)
+    text = re.sub(r"[\W_]+", " ", text, flags=re.UNICODE)
+    return " ".join(text.lower().split())
+
+
+def _is_too_similar_to_recent(candidate: str, recent: list[str]) -> bool:
+    """Reject candidate replies that are duplicates or near-duplicates of
+    something the bot already said recently in this channel."""
+    norm_candidate = _normalize_for_similarity(candidate)
+    if not norm_candidate:
+        return True
+    for prior in recent:
+        norm_prior = _normalize_for_similarity(prior)
+        if not norm_prior:
+            continue
+        if norm_candidate == norm_prior:
+            return True
+        if (
+            len(norm_candidate) >= 6
+            and len(norm_prior) >= 6
+            and (norm_candidate in norm_prior or norm_prior in norm_candidate)
+        ):
+            return True
+    return False
+
+
 async def maybe_send_ai_chat_reply(message):
     import time
 
@@ -1276,6 +1309,10 @@ async def maybe_send_ai_chat_reply(message):
     if now - _channel_last_seen.get(channel_id, 0) > 180:
         _channel_history[channel_id] = []
     _channel_last_seen[channel_id] = now
+
+    # Capture history *before* appending the trigger so we can pass it as
+    # context separately from the message we're reacting to.
+    prior_history = list(_channel_history.get(channel_id, []))
 
     if channel_id not in _channel_history:
         _channel_history[channel_id] = []
@@ -1325,8 +1362,7 @@ async def maybe_send_ai_chat_reply(message):
         return
 
     # Activity detection — prefer active chats
-    history = _channel_history.get(channel_id, [])
-    is_active_chat = len(history) >= 4
+    is_active_chat = len(prior_history) >= 3
 
     # Probability based on message vibe
     funny_keywords = [
@@ -1368,10 +1404,26 @@ async def maybe_send_ai_chat_reply(message):
     }
     emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
 
-    reply = await fetch_ai_chat_reply(history, emoji_names, cleaned_content)
+    recent_replies = list(_recent_bot_replies.get(channel_id, ()))
+    reply = await fetch_ai_chat_reply(
+        prior_history,
+        emoji_names,
+        cleaned_content,
+        avoid_phrases=recent_replies,
+    )
+    if not reply or len(reply) <= 2:
+        return
+
+    # Anti-repetition guard: drop near-duplicates of the bot's recent replies.
+    if _is_too_similar_to_recent(reply, recent_replies):
+        logger.info(
+            "AI reply suppressed as repetitive",
+            extra={"channel_id": channel_id, "reply": reply[:60]},
+        )
+        return
 
     # Random "think and say nothing" — feels human
-    if not reply or len(reply) <= 2 or random.random() <= 0.20:
+    if random.random() <= 0.20:
         return
 
     if not _has_custom_emoji_token(reply) and random.random() < 0.70:
@@ -1386,6 +1438,9 @@ async def maybe_send_ai_chat_reply(message):
         _channel_cooldowns[channel_id] = now
         _user_cooldowns[user_id] = now
         _last_replied_users[channel_id] = user_id
+        if channel_id not in _recent_bot_replies:
+            _recent_bot_replies[channel_id] = deque(maxlen=_RECENT_REPLIES_PER_CHANNEL)
+        _recent_bot_replies[channel_id].append(reply)
         print(f"🤖 AI replied in #{message.channel.name}: {reply[:60]}")
     except Exception:
         logger.exception("AI chat reply failed")

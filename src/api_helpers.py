@@ -285,10 +285,42 @@ async def fetch_ai_summary(messages_text: str) -> str | None:
     )
 
 
+_HISTORY_CHAR_BUDGET = 1500
+
+
+def _trim_history_to_budget(messages: list[str], budget: int) -> list[str]:
+    """Keep the most recent messages whose total char count fits in budget."""
+    if not messages:
+        return []
+    kept: list[str] = []
+    total = 0
+    for line in reversed(messages):
+        cost = len(line) + 1  # +1 for the joining newline
+        if total + cost > budget and kept:
+            break
+        kept.append(line)
+        total += cost
+    kept.reverse()
+    return kept
+
+
 async def fetch_ai_chat_reply(
-    recent_messages: list[str], server_emojis: list[str]
+    recent_messages: list[str],
+    server_emojis: list[str],
+    last_message: str,
+    *,
+    avoid_phrases: list[str] | None = None,
 ) -> str | None:
-    """Generate a witty, context-aware chat reply using Groq."""
+    """Generate a witty, context-aware chat reply using Groq.
+
+    Args:
+        recent_messages: prior conversation context (oldest first), excluding
+            the triggering message itself.
+        server_emojis: pool of custom emoji tokens the model can pick from.
+        last_message: the specific message the bot should react to.
+        avoid_phrases: recent bot replies to steer away from, so the bot
+            doesn't repeat itself.
+    """
     groq_key = (
         settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
     )
@@ -296,41 +328,56 @@ async def fetch_ai_chat_reply(
         return None
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
-    conversation = "\n".join(recent_messages[-10:])
+    trimmed_history = _trim_history_to_budget(recent_messages, _HISTORY_CHAR_BUDGET)
+    context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
+
+    avoid_block = ""
+    if avoid_phrases:
+        avoid_block = (
+            "\n\nYou recently said these — DO NOT repeat them, paraphrase them, "
+            "or reuse their structure:\n- " + "\n- ".join(avoid_phrases[-5:])
+        )
 
     return await _groq_request(
         api_key=groq_key,
         system=(
-            "You are QuettaTeaBot, a funny, witty, slightly chaotic bot member "
-            "in a Pakistani/South Asian server called Quetta Tea Corner. "
-            "You talk like a real server member — casual Urdu/English mix is fine. "
-            "You are NOT a helpful assistant. You are a funny, sarcastic, hype-giving "
-            "community member who occasionally roasts, hypes, acts confused, or drops "
-            "one-liners. Never sound like an AI. Never be generic. Never be cringe. "
-            "STRICT STYLE RULES:\n"
-            "- Keep replies under 12 words MOST of the time\n"
-            "- Sometimes use lowercase only\n"
-            "- Sometimes send short reactions only (e.g. 'bro 💀', 'nahh', "
-            "  'average activities')\n"
-            "- Sometimes act confused\n"
-            "- Sometimes roast lightly\n"
-            "- Never start with 'lol' every time\n"
-            "- Never use full sentences every time\n"
-            "- Never sound like a helpful assistant\n"
-            "- Use 0 to 2 custom emojis max, only when they genuinely fit\n"
-            "- Never spam emojis\n"
+            "You are a real member of Quetta Tea Corner, a Pakistani/South "
+            "Asian Discord server. Urdu+English mix (roman urdu) is normal. "
+            "You are NOT an assistant. You are a chatty, slightly chaotic "
+            "regular who reacts to what people just said.\n\n"
+            "HARD RULES:\n"
+            "- React to the LAST MESSAGE specifically, not the whole chat\n"
+            "- 3 to 10 words. Almost never more than 12\n"
+            "- Never start with 'lol' or 'haha'\n"
+            "- Never use the word 'assistant', 'bot', or 'AI'\n"
+            "- Never explain yourself or your reply\n"
+            "- Never use full polished sentences with capital letters and "
+            "  periods — write like a typing teen\n"
+            "- 0 to 1 custom emoji max, only if it actually fits\n"
+            "- No quote marks around your reply\n"
+            "- No prefixing like 'QuettaTeaBot:' or 'reply:'\n\n"
+            "VOICE: dry, observational, sometimes confused, sometimes roasting, "
+            "sometimes hyping, sometimes confused-deadpan. Vary it.\n\n"
             f"Available custom server emojis: {emoji_hint}"
         ),
         user=(
-            f"Recent chat:\n{conversation}\n\n"
-            "Drop ONE short natural reaction that fits the vibe. "
-            "Examples of good style: 'bro got exposed 😭', 'nahhhh', "
-            "'average faisalabad activities', 'who let bro cook', "
-            "'this convo declining rapidly 💀'. "
-            "Max 12 words. Be unpredictable."
+            f"Recent chat (for context only):\n{context_block}\n\n"
+            f"REACT TO THIS MESSAGE SPECIFICALLY:\n{last_message}\n\n"
+            "Drop ONE short, in-the-moment reaction a real server regular "
+            "would type. Examples of the energy (do NOT copy these):\n"
+            "- 'bro really said that 💀'\n"
+            "- 'nahhh kya bol raha'\n"
+            "- 'this you?'\n"
+            "- 'cap detected'\n"
+            "- 'average faisalabad behaviour'\n"
+            "- 'who hurt u'\n"
+            "- 'ok and?'\n"
+            "- 'sahi hai sahi hai'\n"
+            "- 'bro thinks hes him'\n\n"
+            "Reply with just the reaction text. Nothing else." + avoid_block
         ),
-        max_tokens=60,
-        temperature=1.15,
+        max_tokens=40,
+        temperature=1.2,
     )
 
 
