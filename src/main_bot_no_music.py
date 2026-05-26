@@ -37,6 +37,7 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
 )
@@ -1614,21 +1615,14 @@ def _typing_delay(reply: str) -> float:
 async def maybe_send_ai_chat_reply(message):
     import time
 
-    if (
-        message.author.bot
-        or not message.guild
-        or not isinstance(message.channel, AI_CHAT_CHANNEL_TYPES)
-        or not message.content
-        or len(message.content) <= 3
-        or message.content.startswith("/")
-    ):
+    if message.author.bot or not message.guild:
         return
 
     now = time.time()
     channel_id = message.channel.id
     user_id = message.author.id
-    content_lower = message.content.lower()
-    cleaned_content = _sanitize_ai_history_content(message.content[:200])
+    content_lower = message.content.lower() if message.content else ""
+    cleaned_content = _sanitize_ai_history_content((message.content or "")[:200])
 
     # Track recent messages for context
     if now - _channel_last_seen.get(channel_id, 0) > 180:
@@ -1640,6 +1634,59 @@ async def maybe_send_ai_chat_reply(message):
     # Capture history *before* appending the trigger so we can pass it as
     # context separately from the message we're reacting to.
     prior_history = list(_channel_history.get(channel_id, []))
+
+    # --- Direct mention: always reply, bypass all cooldowns/probability ---
+    if bot.user in message.mentions:
+        if channel_id not in _channel_history:
+            _channel_history[channel_id] = []
+        _channel_history[channel_id].append(
+            f"{message.author.display_name}: {cleaned_content}"
+        )
+        _channel_history[channel_id] = _channel_history[channel_id][-15:]
+        emoji_tokens_by_name = {
+            e.name.lower(): f"<:{e.name}:{e.id}>"
+            for e in message.guild.emojis
+            if not e.animated
+        }
+        emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
+        mention_text = cleaned_content.replace(f"<@{bot.user.id}>", "").strip()
+        reply = await fetch_ai_mention_reply(
+            mention_text or "(just pinged, no message)",
+            message.author.display_name,
+            emoji_names,
+            prior_history,
+        )
+        if reply and len(reply) > 2:
+            if not _has_custom_emoji_token(reply) and random.random() < 0.60:
+                custom_emoji = _pick_ai_custom_emoji(
+                    content_lower, reply, emoji_tokens_by_name
+                )
+                if custom_emoji:
+                    reply = f"{reply.rstrip()} {custom_emoji}"
+            try:
+                async with message.channel.typing():
+                    await asyncio.sleep(_typing_delay(reply))
+                await message.reply(reply, mention_author=True)
+                _channel_cooldowns[channel_id] = now
+                _user_cooldowns[user_id] = now
+                if channel_id not in _recent_bot_replies:
+                    _recent_bot_replies[channel_id] = deque(
+                        maxlen=_RECENT_REPLIES_PER_CHANNEL
+                    )
+                _recent_bot_replies[channel_id].append(reply)
+                print(f"🤖 Mention reply in #{message.channel.name}: {reply[:60]}")
+            except Exception:
+                logger.exception("AI mention reply failed")
+        return
+
+    # Non-mention path: apply channel/content guards
+    if (
+        not isinstance(message.channel, AI_CHAT_CHANNEL_TYPES)
+        or not message.content
+        or len(message.content) <= 3
+        or message.content.startswith("/")
+    ):
+        return
 
     if channel_id not in _channel_history:
         _channel_history[channel_id] = []
