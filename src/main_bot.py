@@ -33,6 +33,8 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_persona_reply,
+    fetch_ai_dead_chat_starter,
 )
 from music_player import setup_music_commands
 
@@ -52,6 +54,13 @@ sticky_message_id = None
 # Data storage (async-safe; serializes writes, atomic on-disk swap)
 data_store = JsonDataStore(settings.bot_data_file)
 bot_data = data_store.load_sync()
+
+# User profile storage — separate file so profile writes don't block bot_data
+_user_profiles_store = JsonDataStore(
+    settings.bot_data_file.parent / "user_profiles.json",
+    default={},
+)
+_user_profiles: dict = {}
 
 # ---------- COLOR ROLES (37 remaining after cleanup) ----------
 COLOR_ROLES = {
@@ -1152,8 +1161,305 @@ async def on_message_delete(message):
         await logs_channel.send(embed=embed)
 
 
-# ==================== INTELLIGENT AUTO-REPLY SYSTEM ====================
+# ==================== USER PROFILE SYSTEM ====================
+import re as _re
 from collections import deque
+
+_PROFILE_SAVE_INTERVAL = 70  # flush to disk every N messages per user
+_PROFILE_MIN_MESSAGES = 50  # minimum before persona reply activates
+_PROFILE_MAX_WORD_FREQ = 200  # cap word_freq dict size
+_PROFILE_MAX_NGRAM_FREQ = 100  # cap ngram_freq dict size
+_PROFILE_MAX_QUOTES = 10  # stored notable quotes per user
+_NGRAM_SIGNATURE_THRESHOLD = 3  # occurrences before phrase becomes signature
+_profile_dirty_counts: dict[str, int] = {}  # user_id -> messages since last save
+
+_STOP_WORDS = {
+    "the",
+    "a",
+    "an",
+    "is",
+    "it",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "and",
+    "or",
+    "but",
+    "with",
+    "that",
+    "this",
+    "was",
+    "are",
+    "be",
+    "have",
+    "had",
+    "do",
+    "did",
+    "not",
+    "no",
+    "yes",
+    "i",
+    "you",
+    "he",
+    "she",
+    "we",
+    "they",
+    "my",
+    "your",
+    "his",
+    "her",
+    "our",
+    "me",
+    "him",
+    "us",
+    "them",
+    "so",
+    "up",
+    "just",
+    "like",
+    "get",
+    "got",
+    "its",
+    "been",
+    "will",
+    "can",
+    "would",
+    "im",
+    # roman urdu common words (grammatical, not meaningful)
+    "hai",
+    "hain",
+    "ho",
+    "tha",
+    "thi",
+    "ka",
+    "ki",
+    "ke",
+    "se",
+    "ko",
+    "ne",
+    "bhi",
+    "toh",
+    "na",
+    "kya",
+    "koi",
+    "aur",
+    "ya",
+    "ek",
+    "sab",
+    "mein",
+    "pe",
+    "par",
+    "ab",
+    "kab",
+    "jab",
+    "tab",
+    "phir",
+    "woh",
+    "ye",
+    "jo",
+    "bas",
+    "hi",
+    "mat",
+    "nahi",
+    "nhi",
+    "okay",
+    "ok",
+    "lol",
+    "haha",
+    "hahaha",
+    "lmao",
+    "bhai",
+    "yaar",
+}
+
+_URDU_SIGNAL_WORDS = {
+    "bhai",
+    "yaar",
+    "nahi",
+    "nhi",
+    "tha",
+    "thi",
+    "mein",
+    "toh",
+    "phir",
+    "kal",
+    "aaj",
+    "raat",
+    "subah",
+    "banda",
+    "mast",
+    "theek",
+    "acha",
+    "sahi",
+    "pagal",
+    "mera",
+    "tera",
+    "apna",
+    "humara",
+    "tumhara",
+    "baat",
+    "samajh",
+    "dekh",
+    "sun",
+    "bol",
+    "yahan",
+    "wahan",
+    "pehle",
+    "seedha",
+    "bilkul",
+    "zaroor",
+    "shayad",
+    "lagta",
+    "lagti",
+    "wala",
+}
+
+
+def _tokenize_for_profile(content: str) -> list[str]:
+    content = _re.sub(r"<a?:[A-Za-z0-9_~]+:\d+>", "", content)
+    content = _re.sub(r"https?://\S+", "", content)
+    content = _re.sub(r"<@!?\d+>", "", content)
+    content = _re.sub(r"[^\w\s]", " ", content.lower())
+    return [w for w in content.split() if len(w) >= 3]
+
+
+def _extract_ngrams(tokens: list[str], n: int) -> list[str]:
+    return [" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
+
+
+def _build_user_context(profile: dict) -> str:
+    parts = [f"name: {profile['display_name']}"]
+
+    phrases = profile.get("signature_phrases", [])
+    if phrases:
+        parts.append(f"their phrases: {', '.join(repr(p) for p in phrases[:5])}")
+
+    topics = [
+        w
+        for w, _ in sorted(
+            profile.get("word_freq", {}).items(), key=lambda x: x[1], reverse=True
+        )
+        if w not in _STOP_WORDS
+    ][:4]
+    if topics:
+        parts.append(f"topics: {', '.join(topics)}")
+
+    avg = profile.get("avg_length", 0)
+    style = (
+        "short punchy" if avg < 6 else ("conversational" if avg < 14 else "detailed")
+    )
+    vibe = "chaotic/funny" if profile.get("funny_ratio", 0) > 0.3 else "chill"
+    urdu = (
+        "heavy roman urdu" if profile.get("urdu_ratio", 0) > 0.5 else "english-leaning"
+    )
+    parts.append(f"style: {style}, {vibe}, {urdu}")
+
+    quotes = profile.get("recent_quotes", [])
+    if quotes:
+        sampled = quotes[-2:]
+        parts.append(f"recently said: {' / '.join(repr(q) for q in sampled)}")
+
+    return " | ".join(parts)
+
+
+async def _update_user_profile(message: discord.Message) -> None:
+    """Passively build per-user chat profile from every message. Saves every 70 messages."""
+    user_id = str(message.author.id)
+    now_hour = str(datetime.now().hour)
+    content = message.content
+
+    profile = _user_profiles.setdefault(
+        user_id,
+        {
+            "display_name": message.author.display_name,
+            "message_count": 0,
+            "word_freq": {},
+            "ngram_freq": {},
+            "signature_phrases": [],
+            "recent_quotes": [],
+            "avg_length": 0.0,
+            "urdu_ratio": 0.0,
+            "funny_ratio": 0.0,
+            "active_hours": {},
+            "_urdu_count": 0,
+            "_funny_count": 0,
+        },
+    )
+
+    profile["display_name"] = message.author.display_name
+    profile["message_count"] += 1
+    n = profile["message_count"]
+
+    profile["active_hours"][now_hour] = profile["active_hours"].get(now_hour, 0) + 1
+
+    tokens = _tokenize_for_profile(content)
+    if not tokens:
+        return
+
+    # Rolling average message length
+    profile["avg_length"] = (profile["avg_length"] * (n - 1) + len(tokens)) / n
+
+    # Word frequency
+    wf = profile["word_freq"]
+    for w in tokens:
+        if w not in _STOP_WORDS:
+            wf[w] = wf.get(w, 0) + 1
+    if len(wf) > _PROFILE_MAX_WORD_FREQ:
+        profile["word_freq"] = dict(
+            sorted(wf.items(), key=lambda x: x[1], reverse=True)[
+                :_PROFILE_MAX_WORD_FREQ
+            ]
+        )
+
+    # Ngram frequency (2-grams + 3-grams)
+    nf = profile["ngram_freq"]
+    for gram in _extract_ngrams(tokens, 2) + _extract_ngrams(tokens, 3):
+        nf[gram] = nf.get(gram, 0) + 1
+    if len(nf) > _PROFILE_MAX_NGRAM_FREQ:
+        profile["ngram_freq"] = dict(
+            sorted(nf.items(), key=lambda x: x[1], reverse=True)[
+                :_PROFILE_MAX_NGRAM_FREQ
+            ]
+        )
+
+    # Urdu ratio
+    content_lower = content.lower()
+    if any(w in content_lower for w in _URDU_SIGNAL_WORDS):
+        profile["_urdu_count"] += 1
+    profile["urdu_ratio"] = profile["_urdu_count"] / n
+
+    # Funny ratio
+    funny_signals = {"lol", "lmao", "haha", "😂", "💀", "bruh", "oof", "omg", "😭"}
+    if any(k in content_lower for k in funny_signals):
+        profile["_funny_count"] += 1
+    profile["funny_ratio"] = profile["_funny_count"] / n
+
+    # Notable quotes (long enough, not low-signal)
+    cleaned = _sanitize_ai_history_content(content)
+    if len(cleaned) > 20 and not _is_low_signal_ai_message(content):
+        quotes = profile["recent_quotes"]
+        quotes.append(cleaned[:200])
+        profile["recent_quotes"] = quotes[-_PROFILE_MAX_QUOTES:]
+
+    # Batch save every 70 messages
+    dirty = _profile_dirty_counts.get(user_id, 0) + 1
+    _profile_dirty_counts[user_id] = dirty
+    if dirty >= _PROFILE_SAVE_INTERVAL:
+        profile["signature_phrases"] = [
+            phrase
+            for phrase, count in sorted(
+                profile["ngram_freq"].items(), key=lambda x: x[1], reverse=True
+            )
+            if count >= _NGRAM_SIGNATURE_THRESHOLD
+        ][:10]
+        _profile_dirty_counts[user_id] = 0
+        await _user_profiles_store.save(_user_profiles)
+
+
+# ==================== INTELLIGENT AUTO-REPLY SYSTEM ====================
 
 # Cooldowns: per-channel and per-user to avoid spam
 _channel_cooldowns: dict[int, float] = {}
@@ -1162,8 +1468,15 @@ _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
-_RECENT_REPLIES_PER_CHANNEL = 6
+_RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+
+# Proactive dead-chat state
+_channel_objects: dict[int, discord.TextChannel] = {}
+_proactive_last_fired: dict[int, float] = {}
+_PROACTIVE_QUIET_MIN = 1800  # channel must be quiet for at least 30 min
+_PROACTIVE_QUIET_MAX = 7200  # but not more than 2 hrs (then it's just dead)
+_PROACTIVE_COOLDOWN = 10800  # 3 hrs minimum between proactive fires per channel
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
     "check",
@@ -1286,6 +1599,15 @@ def _is_too_similar_to_recent(candidate: str, recent: list[str]) -> bool:
     return False
 
 
+def _typing_delay(reply: str) -> float:
+    words = len(reply.split())
+    if words <= 3:
+        return random.uniform(0.8, 1.8)
+    if words <= 7:
+        return random.uniform(1.5, 3.0)
+    return random.uniform(2.5, 5.0)
+
+
 async def maybe_send_ai_chat_reply(message):
     import time
 
@@ -1309,6 +1631,8 @@ async def maybe_send_ai_chat_reply(message):
     if now - _channel_last_seen.get(channel_id, 0) > 180:
         _channel_history[channel_id] = []
     _channel_last_seen[channel_id] = now
+    if isinstance(message.channel, discord.TextChannel):
+        _channel_objects[channel_id] = message.channel
 
     # Capture history *before* appending the trigger so we can pass it as
     # context separately from the message we're reacting to.
@@ -1405,12 +1729,37 @@ async def maybe_send_ai_chat_reply(message):
     emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
 
     recent_replies = list(_recent_bot_replies.get(channel_id, ()))
-    reply = await fetch_ai_chat_reply(
-        prior_history,
-        emoji_names,
-        cleaned_content,
-        avoid_phrases=recent_replies,
+
+    # Use persona reply if this user has a mature profile, fallback to generic
+    profile = _user_profiles.get(str(user_id))
+    has_persona = (
+        profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
     )
+
+    if has_persona:
+        user_context = _build_user_context(profile)
+        reply = await fetch_ai_persona_reply(
+            prior_history,
+            emoji_names,
+            cleaned_content,
+            user_context,
+            avoid_phrases=recent_replies,
+        )
+        if not reply or len(reply) <= 2:
+            reply = await fetch_ai_chat_reply(
+                prior_history,
+                emoji_names,
+                cleaned_content,
+                avoid_phrases=recent_replies,
+            )
+    else:
+        reply = await fetch_ai_chat_reply(
+            prior_history,
+            emoji_names,
+            cleaned_content,
+            avoid_phrases=recent_replies,
+        )
+
     if not reply or len(reply) <= 2:
         return
 
@@ -1433,7 +1782,7 @@ async def maybe_send_ai_chat_reply(message):
 
     try:
         async with message.channel.typing():
-            await asyncio.sleep(random.uniform(2.0, 5.5))
+            await asyncio.sleep(_typing_delay(reply))
         await message.reply(reply, mention_author=False)
         _channel_cooldowns[channel_id] = now
         _user_cooldowns[user_id] = now
@@ -1449,6 +1798,10 @@ async def maybe_send_ai_chat_reply(message):
 @bot.event
 async def on_message(message):
     global sticky_message_id
+
+    # Passively build user profile on every non-bot guild message
+    if not message.author.bot and message.guild and message.content:
+        await _update_user_profile(message)
 
     # ==================== INTELLIGENT AI CHAT REPLIES ====================
     await maybe_send_ai_chat_reply(message)
@@ -1754,6 +2107,40 @@ async def heartbeat_log():
     )
 
 
+@tasks.loop(minutes=7)
+async def proactive_chat_check():
+    """If a tracked channel was active recently but has gone quiet, drop a casual message."""
+    import time
+
+    now = time.time()
+    candidates = [
+        (cid, ch)
+        for cid, ch in _channel_objects.items()
+        if _PROACTIVE_QUIET_MIN
+        <= now - _channel_last_seen.get(cid, 0)
+        <= _PROACTIVE_QUIET_MAX
+        and now - _proactive_last_fired.get(cid, 0) >= _PROACTIVE_COOLDOWN
+    ]
+    if not candidates:
+        return
+
+    channel_id, channel = random.choice(candidates)
+    starter = await fetch_ai_dead_chat_starter()
+    if not starter:
+        return
+
+    try:
+        await channel.send(starter)
+        _proactive_last_fired[channel_id] = now
+        _channel_last_seen[channel_id] = now
+        logger.info(
+            "proactive chat starter sent",
+            extra={"channel": channel.name, "message": starter},
+        )
+    except Exception:
+        logger.exception("proactive chat starter failed")
+
+
 @bot.event
 async def on_ready():
     global sticky_message_id, _bot_started_at
@@ -1762,6 +2149,13 @@ async def on_ready():
         _bot_started_at = datetime.now(timezone.utc)
     if not heartbeat_log.is_running():
         heartbeat_log.start()
+    if not proactive_chat_check.is_running():
+        proactive_chat_check.start()
+
+    # Load user profiles from disk
+    loaded = await _user_profiles_store.load()
+    _user_profiles.update(loaded)
+    logger.info("user profiles loaded", extra={"count": len(_user_profiles)})
 
     logger.info(
         "bot online",
