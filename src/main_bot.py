@@ -1162,7 +1162,7 @@ _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
-_RECENT_REPLIES_PER_CHANNEL = 6
+_RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
