@@ -2143,7 +2143,7 @@ async def proactive_chat_check():
 
 @bot.event
 async def on_ready():
-    global sticky_message_id, _bot_started_at, _user_profiles
+    global sticky_message_id, _bot_started_at
 
     if _bot_started_at is None:
         _bot_started_at = datetime.now(timezone.utc)
