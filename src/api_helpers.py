@@ -8,10 +8,11 @@ import html
 try:
     from config import settings
     from logging_config import get_logger
+    from retry_utils import HttpStatusError, RetryError, retry_async
 except ImportError:
     from .config import settings
     from .logging_config import get_logger
-from .retry_utils import HttpStatusError, RetryError, retry_async
+    from .retry_utils import HttpStatusError, RetryError, retry_async
 
 logger = get_logger(__name__)
 
