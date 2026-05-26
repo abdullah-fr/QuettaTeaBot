@@ -51,6 +51,8 @@ reports/metrics.json
 
 # Personal information (keep private on local machine)
 docs/PERSONAL_INFO.md
+CLAUDE.md
+CHANGES_LOG.md
 
 # OS
 .DS_Store
