@@ -1286,6 +1286,15 @@ def _is_too_similar_to_recent(candidate: str, recent: list[str]) -> bool:
     return False
 
 
+def _typing_delay(reply: str) -> float:
+    words = len(reply.split())
+    if words <= 3:
+        return random.uniform(0.8, 1.8)
+    if words <= 7:
+        return random.uniform(1.5, 3.0)
+    return random.uniform(2.5, 5.0)
+
+
 async def maybe_send_ai_chat_reply(message):
     import time
 
@@ -1433,7 +1442,7 @@ async def maybe_send_ai_chat_reply(message):
 
     try:
         async with message.channel.typing():
-            await asyncio.sleep(random.uniform(2.0, 5.5))
+            await asyncio.sleep(_typing_delay(reply))
         await message.reply(reply, mention_author=False)
         _channel_cooldowns[channel_id] = now
         _user_cooldowns[user_id] = now
