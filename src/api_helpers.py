@@ -334,7 +334,9 @@ async def fetch_ai_persona_reply(
         return None
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
-    trimmed_history = _trim_history_to_budget(recent_messages, _PERSONA_HISTORY_CHAR_BUDGET)
+    trimmed_history = _trim_history_to_budget(
+        recent_messages, _PERSONA_HISTORY_CHAR_BUDGET
+    )
     context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
 
     avoid_block = ""
@@ -379,8 +381,7 @@ async def fetch_ai_persona_reply(
         system=system_prompt,
         user=(
             f"recent chat:\n{context_block}\n\n"
-            f"REPLY TO THIS MESSAGE:\n{last_message}"
-            + avoid_block
+            f"REPLY TO THIS MESSAGE:\n{last_message}" + avoid_block
         ),
         max_tokens=60,
         temperature=1.1,

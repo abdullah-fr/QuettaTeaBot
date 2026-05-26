@@ -1165,34 +1165,156 @@ async def on_message_delete(message):
 import re as _re
 from collections import deque
 
-_PROFILE_SAVE_INTERVAL = 70       # flush to disk every N messages per user
-_PROFILE_MIN_MESSAGES = 50        # minimum before persona reply activates
-_PROFILE_MAX_WORD_FREQ = 200      # cap word_freq dict size
-_PROFILE_MAX_NGRAM_FREQ = 100     # cap ngram_freq dict size
-_PROFILE_MAX_QUOTES = 10          # stored notable quotes per user
-_NGRAM_SIGNATURE_THRESHOLD = 3   # occurrences before phrase becomes signature
+_PROFILE_SAVE_INTERVAL = 70  # flush to disk every N messages per user
+_PROFILE_MIN_MESSAGES = 50  # minimum before persona reply activates
+_PROFILE_MAX_WORD_FREQ = 200  # cap word_freq dict size
+_PROFILE_MAX_NGRAM_FREQ = 100  # cap ngram_freq dict size
+_PROFILE_MAX_QUOTES = 10  # stored notable quotes per user
+_NGRAM_SIGNATURE_THRESHOLD = 3  # occurrences before phrase becomes signature
 _profile_dirty_counts: dict[str, int] = {}  # user_id -> messages since last save
 
 _STOP_WORDS = {
-    "the", "a", "an", "is", "it", "in", "on", "at", "to", "for", "of", "and",
-    "or", "but", "with", "that", "this", "was", "are", "be", "have", "had",
-    "do", "did", "not", "no", "yes", "i", "you", "he", "she", "we", "they",
-    "my", "your", "his", "her", "our", "me", "him", "us", "them", "so", "up",
-    "just", "like", "get", "got", "its", "been", "will", "can", "would", "im",
+    "the",
+    "a",
+    "an",
+    "is",
+    "it",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "and",
+    "or",
+    "but",
+    "with",
+    "that",
+    "this",
+    "was",
+    "are",
+    "be",
+    "have",
+    "had",
+    "do",
+    "did",
+    "not",
+    "no",
+    "yes",
+    "i",
+    "you",
+    "he",
+    "she",
+    "we",
+    "they",
+    "my",
+    "your",
+    "his",
+    "her",
+    "our",
+    "me",
+    "him",
+    "us",
+    "them",
+    "so",
+    "up",
+    "just",
+    "like",
+    "get",
+    "got",
+    "its",
+    "been",
+    "will",
+    "can",
+    "would",
+    "im",
     # roman urdu common words (grammatical, not meaningful)
-    "hai", "hain", "ho", "tha", "thi", "ka", "ki", "ke", "se", "ko",
-    "ne", "bhi", "toh", "na", "kya", "koi", "aur", "ya", "ek", "sab",
-    "mein", "pe", "par", "ab", "kab", "jab", "tab", "phir", "woh", "ye",
-    "jo", "bas", "hi", "mat", "nahi", "nhi", "okay", "ok", "lol", "haha",
-    "hahaha", "lmao", "bhai", "yaar",
+    "hai",
+    "hain",
+    "ho",
+    "tha",
+    "thi",
+    "ka",
+    "ki",
+    "ke",
+    "se",
+    "ko",
+    "ne",
+    "bhi",
+    "toh",
+    "na",
+    "kya",
+    "koi",
+    "aur",
+    "ya",
+    "ek",
+    "sab",
+    "mein",
+    "pe",
+    "par",
+    "ab",
+    "kab",
+    "jab",
+    "tab",
+    "phir",
+    "woh",
+    "ye",
+    "jo",
+    "bas",
+    "hi",
+    "mat",
+    "nahi",
+    "nhi",
+    "okay",
+    "ok",
+    "lol",
+    "haha",
+    "hahaha",
+    "lmao",
+    "bhai",
+    "yaar",
 }
 
 _URDU_SIGNAL_WORDS = {
-    "bhai", "yaar", "nahi", "nhi", "tha", "thi", "mein", "toh", "phir",
-    "kal", "aaj", "raat", "subah", "banda", "mast", "theek", "acha",
-    "sahi", "pagal", "mera", "tera", "apna", "humara", "tumhara",
-    "baat", "samajh", "dekh", "sun", "bol", "yahan", "wahan", "pehle",
-    "seedha", "bilkul", "zaroor", "shayad", "lagta", "lagti", "wala",
+    "bhai",
+    "yaar",
+    "nahi",
+    "nhi",
+    "tha",
+    "thi",
+    "mein",
+    "toh",
+    "phir",
+    "kal",
+    "aaj",
+    "raat",
+    "subah",
+    "banda",
+    "mast",
+    "theek",
+    "acha",
+    "sahi",
+    "pagal",
+    "mera",
+    "tera",
+    "apna",
+    "humara",
+    "tumhara",
+    "baat",
+    "samajh",
+    "dekh",
+    "sun",
+    "bol",
+    "yahan",
+    "wahan",
+    "pehle",
+    "seedha",
+    "bilkul",
+    "zaroor",
+    "shayad",
+    "lagta",
+    "lagti",
+    "wala",
 }
 
 
@@ -1205,7 +1327,7 @@ def _tokenize_for_profile(content: str) -> list[str]:
 
 
 def _extract_ngrams(tokens: list[str], n: int) -> list[str]:
-    return [" ".join(tokens[i: i + n]) for i in range(len(tokens) - n + 1)]
+    return [" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
 
 
 def _build_user_context(profile: dict) -> str:
@@ -1216,7 +1338,8 @@ def _build_user_context(profile: dict) -> str:
         parts.append(f"their phrases: {', '.join(repr(p) for p in phrases[:5])}")
 
     topics = [
-        w for w, _ in sorted(
+        w
+        for w, _ in sorted(
             profile.get("word_freq", {}).items(), key=lambda x: x[1], reverse=True
         )
         if w not in _STOP_WORDS
@@ -1225,9 +1348,13 @@ def _build_user_context(profile: dict) -> str:
         parts.append(f"topics: {', '.join(topics)}")
 
     avg = profile.get("avg_length", 0)
-    style = "short punchy" if avg < 6 else ("conversational" if avg < 14 else "detailed")
+    style = (
+        "short punchy" if avg < 6 else ("conversational" if avg < 14 else "detailed")
+    )
     vibe = "chaotic/funny" if profile.get("funny_ratio", 0) > 0.3 else "chill"
-    urdu = "heavy roman urdu" if profile.get("urdu_ratio", 0) > 0.5 else "english-leaning"
+    urdu = (
+        "heavy roman urdu" if profile.get("urdu_ratio", 0) > 0.5 else "english-leaning"
+    )
     parts.append(f"style: {style}, {vibe}, {urdu}")
 
     quotes = profile.get("recent_quotes", [])
@@ -1244,20 +1371,23 @@ async def _update_user_profile(message: discord.Message) -> None:
     now_hour = str(datetime.now().hour)
     content = message.content
 
-    profile = _user_profiles.setdefault(user_id, {
-        "display_name": message.author.display_name,
-        "message_count": 0,
-        "word_freq": {},
-        "ngram_freq": {},
-        "signature_phrases": [],
-        "recent_quotes": [],
-        "avg_length": 0.0,
-        "urdu_ratio": 0.0,
-        "funny_ratio": 0.0,
-        "active_hours": {},
-        "_urdu_count": 0,
-        "_funny_count": 0,
-    })
+    profile = _user_profiles.setdefault(
+        user_id,
+        {
+            "display_name": message.author.display_name,
+            "message_count": 0,
+            "word_freq": {},
+            "ngram_freq": {},
+            "signature_phrases": [],
+            "recent_quotes": [],
+            "avg_length": 0.0,
+            "urdu_ratio": 0.0,
+            "funny_ratio": 0.0,
+            "active_hours": {},
+            "_urdu_count": 0,
+            "_funny_count": 0,
+        },
+    )
 
     profile["display_name"] = message.author.display_name
     profile["message_count"] += 1
@@ -1279,7 +1409,9 @@ async def _update_user_profile(message: discord.Message) -> None:
             wf[w] = wf.get(w, 0) + 1
     if len(wf) > _PROFILE_MAX_WORD_FREQ:
         profile["word_freq"] = dict(
-            sorted(wf.items(), key=lambda x: x[1], reverse=True)[:_PROFILE_MAX_WORD_FREQ]
+            sorted(wf.items(), key=lambda x: x[1], reverse=True)[
+                :_PROFILE_MAX_WORD_FREQ
+            ]
         )
 
     # Ngram frequency (2-grams + 3-grams)
@@ -1288,7 +1420,9 @@ async def _update_user_profile(message: discord.Message) -> None:
         nf[gram] = nf.get(gram, 0) + 1
     if len(nf) > _PROFILE_MAX_NGRAM_FREQ:
         profile["ngram_freq"] = dict(
-            sorted(nf.items(), key=lambda x: x[1], reverse=True)[:_PROFILE_MAX_NGRAM_FREQ]
+            sorted(nf.items(), key=lambda x: x[1], reverse=True)[
+                :_PROFILE_MAX_NGRAM_FREQ
+            ]
         )
 
     # Urdu ratio
@@ -1315,7 +1449,8 @@ async def _update_user_profile(message: discord.Message) -> None:
     _profile_dirty_counts[user_id] = dirty
     if dirty >= _PROFILE_SAVE_INTERVAL:
         profile["signature_phrases"] = [
-            phrase for phrase, count in sorted(
+            phrase
+            for phrase, count in sorted(
                 profile["ngram_freq"].items(), key=lambda x: x[1], reverse=True
             )
             if count >= _NGRAM_SIGNATURE_THRESHOLD
@@ -1339,9 +1474,9 @@ AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thre
 # Proactive dead-chat state
 _channel_objects: dict[int, discord.TextChannel] = {}
 _proactive_last_fired: dict[int, float] = {}
-_PROACTIVE_QUIET_MIN = 1800   # channel must be quiet for at least 30 min
-_PROACTIVE_QUIET_MAX = 7200   # but not more than 2 hrs (then it's just dead)
-_PROACTIVE_COOLDOWN = 10800   # 3 hrs minimum between proactive fires per channel
+_PROACTIVE_QUIET_MIN = 1800  # channel must be quiet for at least 30 min
+_PROACTIVE_QUIET_MAX = 7200  # but not more than 2 hrs (then it's just dead)
+_PROACTIVE_COOLDOWN = 10800  # 3 hrs minimum between proactive fires per channel
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
     "check",
@@ -1597,21 +1732,32 @@ async def maybe_send_ai_chat_reply(message):
 
     # Use persona reply if this user has a mature profile, fallback to generic
     profile = _user_profiles.get(str(user_id))
-    has_persona = profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
+    has_persona = (
+        profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
+    )
 
     if has_persona:
         user_context = _build_user_context(profile)
         reply = await fetch_ai_persona_reply(
-            prior_history, emoji_names, cleaned_content, user_context,
+            prior_history,
+            emoji_names,
+            cleaned_content,
+            user_context,
             avoid_phrases=recent_replies,
         )
         if not reply or len(reply) <= 2:
             reply = await fetch_ai_chat_reply(
-                prior_history, emoji_names, cleaned_content, avoid_phrases=recent_replies,
+                prior_history,
+                emoji_names,
+                cleaned_content,
+                avoid_phrases=recent_replies,
             )
     else:
         reply = await fetch_ai_chat_reply(
-            prior_history, emoji_names, cleaned_content, avoid_phrases=recent_replies,
+            prior_history,
+            emoji_names,
+            cleaned_content,
+            avoid_phrases=recent_replies,
         )
 
     if not reply or len(reply) <= 2:
@@ -1970,7 +2116,9 @@ async def proactive_chat_check():
     candidates = [
         (cid, ch)
         for cid, ch in _channel_objects.items()
-        if _PROACTIVE_QUIET_MIN <= now - _channel_last_seen.get(cid, 0) <= _PROACTIVE_QUIET_MAX
+        if _PROACTIVE_QUIET_MIN
+        <= now - _channel_last_seen.get(cid, 0)
+        <= _PROACTIVE_QUIET_MAX
         and now - _proactive_last_fired.get(cid, 0) >= _PROACTIVE_COOLDOWN
     ]
     if not candidates:
@@ -1985,7 +2133,10 @@ async def proactive_chat_check():
         await channel.send(starter)
         _proactive_last_fired[channel_id] = now
         _channel_last_seen[channel_id] = now
-        logger.info("proactive chat starter sent", extra={"channel": channel.name, "message": starter})
+        logger.info(
+            "proactive chat starter sent",
+            extra={"channel": channel.name, "message": starter},
+        )
     except Exception:
         logger.exception("proactive chat starter failed")
 
