@@ -25,9 +25,10 @@ _DEFAULT_PAYLOAD: dict[str, dict] = {
 
 
 class JsonDataStore:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, default: dict | None = None):
         self._path = Path(path)
         self._lock = asyncio.Lock()
+        self._default = default if default is not None else dict(_DEFAULT_PAYLOAD)
 
     @property
     def path(self) -> Path:
@@ -37,7 +38,7 @@ class JsonDataStore:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
             self._path.write_text(
-                json.dumps(_DEFAULT_PAYLOAD, indent=4) + "\n",
+                json.dumps(self._default, indent=4) + "\n",
                 encoding="utf-8",
             )
 
@@ -47,7 +48,7 @@ class JsonDataStore:
             return json.loads(self._path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             self._path.write_text(
-                json.dumps(_DEFAULT_PAYLOAD, indent=4) + "\n",
+                json.dumps(self._default, indent=4) + "\n",
                 encoding="utf-8",
             )
             return json.loads(self._path.read_text(encoding="utf-8"))

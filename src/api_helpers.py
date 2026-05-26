@@ -315,6 +315,79 @@ async def fetch_ai_summary(messages_text: str) -> str | None:
 
 
 _HISTORY_CHAR_BUDGET = 1500
+_PERSONA_HISTORY_CHAR_BUDGET = 2500
+
+
+async def fetch_ai_persona_reply(
+    recent_messages: list[str],
+    server_emojis: list[str],
+    last_message: str,
+    user_context: str,
+    *,
+    avoid_phrases: list[str] | None = None,
+) -> str | None:
+    """Generate a persona-aware reply using the sender's learned chat profile."""
+    groq_key = (
+        settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+    )
+    if not groq_key:
+        return None
+
+    emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
+    trimmed_history = _trim_history_to_budget(recent_messages, _PERSONA_HISTORY_CHAR_BUDGET)
+    context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
+
+    avoid_block = ""
+    if avoid_phrases:
+        avoid_block = (
+            "\n\nYou recently said these — DO NOT repeat them:\n- "
+            + "\n- ".join(avoid_phrases[-5:])
+        )
+
+    system_prompt = (
+        "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
+        "You are NOT an assistant. You are just another terminally online member who knows everyone.\n\n"
+        "ABOUT THE PERSON YOU ARE REPLYING TO:\n"
+        f"{user_context}\n\n"
+        "HOW TO REPLY:\n"
+        "- Write in Roman Urdu mixed with English — complete sentence, casual Discord tone\n"
+        "- Reference their phrases or topics ONLY if it fits naturally — never force it\n"
+        "- React to what they said right now — their profile is background context, not a script\n"
+        "- Be witty, dry, or observational — match their energy level\n"
+        "- Sound like you genuinely know this person from the server\n\n"
+        "LANGUAGE AND LENGTH:\n"
+        "- 6-14 words — a complete thought, not a one-word fragment\n"
+        "- Lowercase, casual, slightly imperfect grammar is fine\n"
+        "- Roman Urdu sentence structure — words flow naturally together\n"
+        "- Max 1 emoji, only if it genuinely fits — often none is better\n"
+        "- Never start with 'lol', 'haha', 'bro', 'bhai'\n"
+        "- Never explain your reply or sound helpful\n"
+        "- Never use quotation marks around your reply\n\n"
+        "GOOD EXAMPLES:\n"
+        "- yaar tera wahi scene hai jo hamesha hota hai\n"
+        "- is dafa toh tune khud expose kar diya apne aap ko\n"
+        "- same energy, consistent toh hai tu kam se kam\n"
+        "- ye toh teri classic move hai honestly\n"
+        "- bhai seedha baat kar, teri history sab batati hai\n"
+        "- aaj bhi wahi raasta, koi change nahi\n\n"
+        f"available server emojis: {emoji_hint}\n\n"
+        "Reply with ONLY the message itself."
+    )
+
+    return await _groq_request(
+        api_key=groq_key,
+        system=system_prompt,
+        user=(
+            f"recent chat:\n{context_block}\n\n"
+            f"REPLY TO THIS MESSAGE:\n{last_message}"
+            + avoid_block
+        ),
+        max_tokens=60,
+        temperature=1.1,
+        top_p=0.92,
+        presence_penalty=0.4,
+        frequency_penalty=0.35,
+    )
 
 
 def _trim_history_to_budget(messages: list[str], budget: int) -> list[str]:

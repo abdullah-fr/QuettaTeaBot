@@ -173,11 +173,15 @@ mypy src/
 | Add a new slash command | `src/main_bot.py` (follow existing pattern) |
 | Add music command | `src/music_player.py` → `setup_music_commands()` |
 | Change AI persona/behavior | `src/api_helpers.py` → `fetch_ai_chat_reply()` system prompt |
-| Change AI trigger probability | `src/main_bot.py` → `maybe_send_ai_chat_reply()` (line ~1390) |
+| Change persona reply behavior | `src/api_helpers.py` → `fetch_ai_persona_reply()` system prompt |
+| Change AI trigger probability | `src/main_bot.py` → `maybe_send_ai_chat_reply()` |
+| Tune persona activation threshold | `src/main_bot.py` → `_PROFILE_MIN_MESSAGES` (currently 50) |
+| Tune profile save frequency | `src/main_bot.py` → `_PROFILE_SAVE_INTERVAL` (currently 70 msgs) |
 | Add channel rule | `src/main_bot.py` → `on_message()` handler |
 | Add a new API | `src/api_helpers.py` (use `_fetch_json()` helper) |
 | Change bot settings | `src/config.py` → `Settings` class |
 | View persistent data schema | `src/data_store.py` → `_DEFAULT_PAYLOAD` |
+| View user profiles | `data/user_profiles.json` (auto-created, keyed by Discord user ID) |
 | Add static content (jokes/roasts) | `src/question_bank.py` |
 
 ---
@@ -220,3 +224,6 @@ These reduce the need to re-explore the codebase in Claude context:
 5. The `try/except ImportError` import guard in every src file must be preserved
 6. Never hardcode API keys — always read from `settings.*` (pydantic-settings)
 7. AI chat: serious keyword list must stay — bot should never engage with grief/crisis topics
+8. `_user_profiles_store` uses `default={}` — do not change to `_DEFAULT_PAYLOAD` or it will corrupt user_profiles.json
+9. Profile saves are batched every 70 messages per user (`_PROFILE_SAVE_INTERVAL`) — don't call `_user_profiles_store.save()` on every message
+10. Persona reply always falls back to generic reply if Groq returns empty — never skip the fallback
