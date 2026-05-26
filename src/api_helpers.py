@@ -252,6 +252,35 @@ async def fetch_roast() -> None:
     return None
 
 
+# ==================== AI DEAD CHAT STARTER ====================
+async def fetch_ai_dead_chat_starter() -> str | None:
+    """Generate a casual message to revive a quiet channel."""
+    groq_key = (
+        settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
+    )
+    if not groq_key:
+        return None
+    return await _groq_request(
+        api_key=groq_key,
+        system=(
+            "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
+            "The chat has gone quiet. You just noticed. Drop ONE casual message to revive it.\n"
+            "Rules:\n"
+            "- 3-8 words max\n"
+            "- lowercase, casual typing\n"
+            "- roman urdu or english mix\n"
+            "- never say 'hello', 'hi', or 'hey'\n"
+            "- be random, bored, or observational\n"
+            "- examples: 'yall dead?', 'koi hai?', 'chat kyun soo gaya', "
+            "'bhai kuch toh bolo', 'silence is deafening fr', 'uthoo sab'\n"
+            "Reply with ONLY the message, nothing else."
+        ),
+        user="the chat has been quiet for a while. say something casual.",
+        max_tokens=25,
+        temperature=1.2,
+    )
+
+
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text: str) -> str | None:
     """Generate conversation summary using Groq (free)"""

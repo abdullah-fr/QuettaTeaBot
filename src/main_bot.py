@@ -33,6 +33,7 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_dead_chat_starter,
 )
 from music_player import setup_music_commands
 
@@ -1164,6 +1165,13 @@ _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
 _RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+
+# Proactive dead-chat state
+_channel_objects: dict[int, discord.TextChannel] = {}
+_proactive_last_fired: dict[int, float] = {}
+_PROACTIVE_QUIET_MIN = 1800   # channel must be quiet for at least 30 min
+_PROACTIVE_QUIET_MAX = 7200   # but not more than 2 hrs (then it's just dead)
+_PROACTIVE_COOLDOWN = 10800   # 3 hrs minimum between proactive fires per channel
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
     "check",
@@ -1318,6 +1326,8 @@ async def maybe_send_ai_chat_reply(message):
     if now - _channel_last_seen.get(channel_id, 0) > 180:
         _channel_history[channel_id] = []
     _channel_last_seen[channel_id] = now
+    if isinstance(message.channel, discord.TextChannel):
+        _channel_objects[channel_id] = message.channel
 
     # Capture history *before* appending the trigger so we can pass it as
     # context separately from the message we're reacting to.
@@ -1763,6 +1773,35 @@ async def heartbeat_log():
     )
 
 
+@tasks.loop(minutes=7)
+async def proactive_chat_check():
+    """If a tracked channel was active recently but has gone quiet, drop a casual message."""
+    import time
+
+    now = time.time()
+    candidates = [
+        (cid, ch)
+        for cid, ch in _channel_objects.items()
+        if _PROACTIVE_QUIET_MIN <= now - _channel_last_seen.get(cid, 0) <= _PROACTIVE_QUIET_MAX
+        and now - _proactive_last_fired.get(cid, 0) >= _PROACTIVE_COOLDOWN
+    ]
+    if not candidates:
+        return
+
+    channel_id, channel = random.choice(candidates)
+    starter = await fetch_ai_dead_chat_starter()
+    if not starter:
+        return
+
+    try:
+        await channel.send(starter)
+        _proactive_last_fired[channel_id] = now
+        _channel_last_seen[channel_id] = now
+        logger.info("proactive chat starter sent", extra={"channel": channel.name, "message": starter})
+    except Exception:
+        logger.exception("proactive chat starter failed")
+
+
 @bot.event
 async def on_ready():
     global sticky_message_id, _bot_started_at
@@ -1771,6 +1810,8 @@ async def on_ready():
         _bot_started_at = datetime.now(timezone.utc)
     if not heartbeat_log.is_running():
         heartbeat_log.start()
+    if not proactive_chat_check.is_running():
+        proactive_chat_check.start()
 
     logger.info(
         "bot online",
