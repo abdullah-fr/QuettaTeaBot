@@ -4,6 +4,7 @@ import aiohttp
 import json
 import random
 import html
+import re
 
 try:
     from config import settings
@@ -338,58 +339,34 @@ async def fetch_ai_persona_reply(
     trimmed_history = _trim_history_to_budget(
         recent_messages, _PERSONA_HISTORY_CHAR_BUDGET
     )
-    context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
-
-    avoid_block = ""
-    if avoid_phrases:
-        avoid_block = (
-            "\n\nYou recently said these — DO NOT repeat them:\n- "
-            + "\n- ".join(avoid_phrases[-5:])
-        )
+    context_block = _build_context_block(trimmed_history)
 
     system_prompt = (
-        "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
-        "You are NOT an assistant. You are just another terminally online member who knows everyone.\n\n"
-        "ABOUT THE PERSON YOU ARE REPLYING TO:\n"
+        "You are a member of a Pakistani Discord server who knows this person well.\n\n"
+        "WHAT YOU KNOW ABOUT THEM:\n"
         f"{user_context}\n\n"
-        "HOW TO REPLY:\n"
-        "- Write in Roman Urdu mixed with English — complete sentence, casual Discord tone\n"
-        "- Reference their phrases or topics ONLY if it fits naturally — never force it\n"
-        "- React to what they said right now — their profile is background context, not a script\n"
-        "- Be witty, dry, or observational — match their energy level\n"
-        "- Sound like you genuinely know this person from the server\n\n"
-        "LANGUAGE AND LENGTH:\n"
-        "- 6-14 words — a complete thought, not a one-word fragment\n"
-        "- Lowercase, casual, slightly imperfect grammar is fine\n"
-        "- Roman Urdu sentence structure — words flow naturally together\n"
-        "- Max 1 emoji, only if it genuinely fits — often none is better\n"
-        "- Never start with 'lol', 'haha', 'bro', 'bhai'\n"
-        "- Never explain your reply or sound helpful\n"
-        "- Never use quotation marks around your reply\n\n"
-        "GOOD EXAMPLES:\n"
-        "- yaar tera wahi scene hai jo hamesha hota hai\n"
-        "- is dafa toh tune khud expose kar diya apne aap ko\n"
-        "- same energy, consistent toh hai tu kam se kam\n"
-        "- ye toh teri classic move hai honestly\n"
-        "- bhai seedha baat kar, teri history sab batati hai\n"
-        "- aaj bhi wahi raasta, koi change nahi\n\n"
-        f"available server emojis: {emoji_hint}\n\n"
-        "Reply with ONLY the message itself."
+        "React to what they just said. Use what you know about them only if it fits naturally — don't force references.\n\n"
+        "STYLE: Roman Urdu + English, lowercase, 6-12 words, casual and dry\n"
+        "NEVER: be theatrical, start with lol/bro, explain your reply\n\n"
+        "Output only the reply."
+    ) + (
+        f"\n\nDon't repeat these recent replies:\n" + "\n".join(avoid_phrases[-4:])
+        if avoid_phrases else ""
     )
 
-    return await _groq_request(
+    return _validate_reply(await _groq_request(
         api_key=groq_key,
         system=system_prompt,
         user=(
             f"recent chat:\n{context_block}\n\n"
-            f"REPLY TO THIS MESSAGE:\n{last_message}" + avoid_block
+            f"REPLY TO THIS MESSAGE:\n{last_message}"
         ),
-        max_tokens=60,
-        temperature=1.1,
+        max_tokens=50,
+        temperature=0.88,
         top_p=0.92,
         presence_penalty=0.4,
         frequency_penalty=0.35,
-    )
+    ))
 
 
 def _trim_history_to_budget(messages: list[str], budget: int) -> list[str]:
@@ -408,6 +385,56 @@ def _trim_history_to_budget(messages: list[str], budget: int) -> list[str]:
     return kept
 
 
+def _sanitize_history_line(line: str) -> str:
+    clean = line.strip()
+    if not clean or len(clean) < 3:
+        return ""
+    if len(clean) > 200:
+        clean = clean[:200] + "..."
+    return clean
+
+
+def _build_context_block(messages: list[str]) -> str:
+    cleaned = [_sanitize_history_line(m) for m in messages]
+    cleaned = [m for m in cleaned if m]
+    return "\n".join(cleaned) if cleaned else "(no prior chat)"
+
+
+_BANNED_OUTPUT_PHRASES = [
+    "my whole",
+    "digital",
+    "existence",
+    "meditation",
+    "abducted",
+    "aliens",
+    "as an ai",
+    "i am a bot",
+    "let me help",
+    "great question",
+]
+_THEATRICAL_PATTERNS = [
+    re.compile(r'\*[^*]+\*'),
+    re.compile(r'"[^"]{30,}"'),
+]
+
+
+def _validate_reply(text: str | None) -> str | None:
+    if not text:
+        return None
+    lowered = text.lower()
+    if any(phrase in lowered for phrase in _BANNED_OUTPUT_PHRASES):
+        return None
+    for pattern in _THEATRICAL_PATTERNS:
+        if pattern.search(text):
+            return None
+    if len(text.split()) > 16:
+        return None
+    banned_starts = ("lol", "haha", "omg", "bro,", "bhai,", "lmao")
+    if lowered.startswith(banned_starts):
+        return None
+    return text.strip()
+
+
 async def fetch_ai_chat_reply(
     recent_messages: list[str],
     server_emojis: list[str],
@@ -415,16 +442,7 @@ async def fetch_ai_chat_reply(
     *,
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
-    """Generate a witty, context-aware chat reply using Groq.
-
-    Args:
-        recent_messages: prior conversation context (oldest first), excluding
-            the triggering message itself.
-        server_emojis: pool of custom emoji tokens the model can pick from.
-        last_message: the specific message the bot should react to.
-        avoid_phrases: recent bot replies to steer away from, so the bot
-            doesn't repeat itself.
-    """
+    """Generate a witty, context-aware chat reply using Groq."""
     groq_key = (
         settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
     )
@@ -433,7 +451,7 @@ async def fetch_ai_chat_reply(
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
     trimmed_history = _trim_history_to_budget(recent_messages, _HISTORY_CHAR_BUDGET)
-    context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
+    context_block = _build_context_block(trimmed_history)
 
     avoid_block = ""
     if avoid_phrases:
@@ -443,98 +461,42 @@ async def fetch_ai_chat_reply(
         )
 
     system_prompt = (
-        "You are a real regular in Quetta Tea Corner, a Pakistani/South Asian "
-        "Discord server.\n\n"
-        "You are NOT an assistant, moderator, helper, or narrator.\n"
-        "You are just another terminally online server member reacting "
-        "naturally.\n\n"
-        "MOST IMPORTANT RULE:\n"
-        "Your reply MUST make logical sense as a direct reaction to what was "
-        "actually said. If someone says they ate biryani, react to biryani. "
-        "If someone posts a shayari, react to the shayari. If someone "
-        "complains about load shedding, react to load shedding. "
-        "NEVER output a generic vibe phrase that could apply to ANY message — "
-        "that is the worst possible reply. The reader must be able to tell "
-        "your reply is specifically about their message.\n\n"
-        "CORE BEHAVIOR:\n"
-        "- react ONLY to the LAST message\n"
-        "- sound like someone casually typing in Discord\n"
-        "- have opinions, confusion, reactions, overreactions\n"
-        "- sometimes be dry, awkward, sleepy, sarcastic, hyped, or dismissive\n"
-        "- prioritize vibe over correctness\n"
-        "- don't try to be helpful or sound smart\n"
-        "- don't force jokes every message\n\n"
-        "LANGUAGE STYLE:\n"
-        "- roman urdu + english mix naturally\n"
-        "- lowercase only, messy casual typing\n"
-        "- short reactions > full conversations\n"
-        "- pakistani/genz discord energy\n\n"
-        "URDU GRAMMAR RULES (follow these when writing roman urdu):\n"
-        "- sentence order is SOV: subject first, VERB at the END\n"
-        "  CORRECT: 'ye banda pagal ho gaya hai'\n"
-        "  WRONG:   'ye banda hai pagal ho gaya'\n"
-        "- negation 'nahi' goes directly before the verb\n"
-        "  CORRECT: 'mujhe ye pasand nahi aya'\n"
-        "  WRONG:   'mujhe nahi ye pasand aya'\n"
-        "- use postpositions AFTER the noun, not before\n"
-        "  CORRECT: 'ghar mein', 'school se', 'uske saath'\n"
-        "  WRONG:   'mein ghar', 'se school'\n"
-        "- verb must match tense:\n"
-        "  present: hai/hain | past: tha/thi/the | future: hoga/hogi\n"
-        "  CORRECT: 'wo so raha tha' / 'ab thak gaya hun'\n"
-        "  WRONG:   'wo so raha hoga tha'\n"
-        "- adjective comes BEFORE the noun it describes\n"
-        "  CORRECT: 'bura scene hai' | WRONG: 'scene bura hai [only ok as a standalone judgment]'\n"
-        "- when mixing english words into urdu sentence, keep verb at end\n"
-        "  CORRECT: 'ye situation genuinely weird ho gayi hai'\n"
-        "  WRONG:   'ye situation hai genuinely weird'\n\n"
-        "MESSAGE LENGTH:\n"
-        "- usually 4-10 words\n"
-        "- hard max 14 words\n"
-        "- never write paragraphs\n\n"
-        "EMOJIS: max 1, only if genuinely fits, often none\n\n"
-        "IMPORTANT RULES:\n"
-        "- NEVER start with 'lol', 'haha', 'lmao', 'bro', or 'bhai'\n"
-        "- NEVER use quotation marks around replies\n"
-        "- NEVER prefix replies like 'reply:'\n"
-        "- NEVER say 'as an ai' or use 'assistant', 'bot', 'AI'\n"
-        "- NEVER sound corporate or wholesome\n"
-        "- NEVER ask multiple questions\n"
-        "- NEVER output a reply that makes zero sense without context\n\n"
-        "STYLE EXAMPLES (correct grammar + tone — not templates to copy):\n"
-        "- [brags about food] -> yaar ye sun ke bhook lag gayi mujhe\n"
-        "- [shares sad news] -> yaar ye sun ke dil bhar gaya\n"
-        "- [posts cringe] -> ye delete karo please 😭\n"
-        "- [it's 3am] -> bhai so ja yaar kya kar raha hai itni raat ko\n"
-        "- [gets ratio'd] -> deserved tha honestly\n"
-        "- [hot take] -> kis confidence se ye bola usne\n"
-        "- [complains about load shedding] -> yaar bijli walon ne tou hadd kar di\n"
-        "- [something unhinged] -> ye padh ke mera dimaag kharab ho gaya\n\n"
-        "BAD REPLY EXAMPLES (never do this):\n"
-        "- i understand what you mean\n"
-        "- that is a fascinating perspective\n"
-        "- haha bro thats funny 😂😂\n"
-        "- quetta moment fr [when message has nothing to do with quetta]\n"
-        "- ye banda cooked hai [said randomly without relating to message]\n\n"
-        "Reply with ONLY the message itself.\n\n"
+        "You are a member of a Pakistani Discord server. Chill, dry, online all the time.\n\n"
+        "You react to whatever was just said — not the vibe in general, the specific message.\n\n"
+        "STYLE:\n"
+        "- Roman Urdu + English mix, lowercase, casual\n"
+        "- 4-10 words. Hard max 12.\n"
+        "- Dry, sarcastic, or unbothered — not theatrical\n"
+        "- Max 1 emoji, usually none\n\n"
+        "RULES:\n"
+        "- Reply must clearly be about the last message specifically\n"
+        "- Never start with lol/haha/omg/bro/bhai\n"
+        "- No roleplay, no dramatic statements, no explaining yourself\n"
+        "- If you have nothing to say, say nothing meaningful — one dismissive line\n\n"
+        "TONE EXAMPLES (match this energy):\n"
+        "food brag → yaar ye sun ke bhook lag gayi\n"
+        "cringe post → ye delete karo please\n"
+        "hot take → kis confidence se bola usne\n"
+        "3am message → so ja yaar\n"
+        "complaint → deserved tha honestly\n\n"
+        "Output only the reply. Nothing else.\n\n"
         f"available custom server emojis: {emoji_hint}"
     )
 
-    return await _groq_request(
+    return _validate_reply(await _groq_request(
         api_key=groq_key,
         system=system_prompt,
         user=(
             f"recent chat (for context only):\n{context_block}\n\n"
             f"REACT TO THIS MESSAGE SPECIFICALLY:\n{last_message}\n\n"
-            "Your reply must clearly relate to what was said above. "
             "reply with just the reaction text. nothing else." + avoid_block
         ),
-        max_tokens=40,
-        temperature=1.1,
-        top_p=0.90,
-        presence_penalty=0.3,
-        frequency_penalty=0.3,
-    )
+        max_tokens=35,
+        temperature=0.85,
+        top_p=0.88,
+        presence_penalty=0.2,
+        frequency_penalty=0.2,
+    ))
 
 
 async def fetch_ai_mention_reply(
@@ -543,7 +505,7 @@ async def fetch_ai_mention_reply(
     server_emojis: list[str],
     recent_messages: list[str],
 ) -> str | None:
-    """Generate a hilarious reply when the bot is directly mentioned/tagged."""
+    """Generate a reply when the bot is directly mentioned/tagged."""
     groq_key = (
         settings.groq_api_key.get_secret_value() if settings.groq_api_key else None
     )
@@ -552,46 +514,22 @@ async def fetch_ai_mention_reply(
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
     trimmed_history = _trim_history_to_budget(recent_messages, _HISTORY_CHAR_BUDGET)
-    context_block = "\n".join(trimmed_history) if trimmed_history else "(no prior chat)"
+    context_block = _build_context_block(trimmed_history)
 
     system_prompt = (
-        "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
-        "Someone just @tagged you. You are NOT a bot, NOT an assistant. You're just another guy in the server.\n\n"
-        "YOUR MAIN JOB:\n"
-        "If they said something — react to THAT. The tag is just how they got your attention.\n"
-        "Treat it like someone tapped your shoulder and said something. React to what they said.\n"
-        "Only complain about being tagged if they sent nothing or just said your name.\n\n"
-        "HOW TO REACT:\n"
-        "- read what they actually said and respond to it naturally\n"
-        "- be casual, dry, or mildly opinionated — like a real person would\n"
-        "- if it's a fact/question, give a short take or reaction, not an explanation\n"
-        "- if it's a hot take, agree/disagree briefly\n"
-        "- if it's nothing, ask what they want or act unbothered\n\n"
-        "LANGUAGE:\n"
-        "- Roman Urdu mixed with English — same as how Pakistanis type on Discord\n"
-        "- lowercase, casual, slightly lazy typing\n"
-        "- 4-12 words max — short reactions only\n"
-        "- max 1 emoji, only if it genuinely fits, often none\n\n"
-        "STRICT RULES:\n"
-        "- NEVER roleplay scenarios\n"
-        "- NEVER say 'my whole existence', 'digital sovereignty', 'meditation session', 'calculating your existence'\n"
-        "- NEVER be dramatic or theatrical\n"
-        "- NEVER start with 'omg', 'lol', 'haha', 'bro', 'bhai'\n"
-        "- NEVER sound like a quirky AI or Twitter bot\n"
-        "- NEVER ignore what they said to just complain about the ping\n\n"
-        "GOOD EXAMPLES (reacting to content):\n"
-        "- [dark matter fact] -> yaar ye toh already 10 saal pehle theory thi\n"
-        "- [dark matter fact] -> interesting hai lekin proof kahan hai\n"
-        "- [hot take] -> nahi yaar ye galat hai\n"
-        "- [question] -> pata nahi honestly\n"
-        "- [meme/joke] -> cooked 😭\n"
-        "- [no message] -> kyun tag kiya mujhe\n"
-        "- [no message] -> haan bol kya hua\n\n"
-        "Reply with ONLY the message itself.\n\n"
+        "Someone tagged you in a Pakistani Discord server. You're just a regular member, not a bot.\n\n"
+        "React to what they actually said. If they said nothing, ask what they want.\n\n"
+        "STYLE: Roman Urdu + English, lowercase, 4-10 words, dry tone, max 1 emoji\n"
+        "NEVER: be dramatic, start with omg/bro, roleplay, explain anything\n\n"
+        "Examples:\n"
+        "tagged with a fact → interesting, proof kahan hai\n"
+        "tagged with nothing → haan bol kya hua\n"
+        "tagged with hot take → nahi yaar ye galat hai\n\n"
+        "Output only the reply.\n\n"
         f"available custom server emojis: {emoji_hint}"
     )
 
-    return await _groq_request(
+    return _validate_reply(await _groq_request(
         api_key=groq_key,
         system=system_prompt,
         user=(
@@ -599,12 +537,12 @@ async def fetch_ai_mention_reply(
             f"{sender_name} tagged you and said: {mention_message}\n\n"
             "react to what they said. if nothing was said, ask what they want. short and casual. just the reply text."
         ),
-        max_tokens=25,
-        temperature=0.95,
-        top_p=0.90,
+        max_tokens=20,
+        temperature=0.80,
+        top_p=0.85,
         presence_penalty=0.3,
         frequency_penalty=0.3,
-    )
+    ))
 
 
 async def _groq_request(
@@ -619,7 +557,7 @@ async def _groq_request(
 ) -> str | None:
     """Shared Groq API call using aiohttp."""
     payload: dict[str, Any] = {
-        "model": "llama-3.1-8b-instant",
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
