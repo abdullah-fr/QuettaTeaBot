@@ -418,7 +418,7 @@ _THEATRICAL_PATTERNS = [
 ]
 
 
-def _validate_reply(text: str | None) -> str | None:
+def _validate_reply(text: str | None, max_words: int = 16) -> str | None:
     if not text:
         return None
     lowered = text.lower()
@@ -427,7 +427,7 @@ def _validate_reply(text: str | None) -> str | None:
     for pattern in _THEATRICAL_PATTERNS:
         if pattern.search(text):
             return None
-    if len(text.split()) > 16:
+    if len(text.split()) > max_words:
         return None
     banned_starts = ("lol", "haha", "omg", "bro,", "bhai,", "lmao")
     if lowered.startswith(banned_starts):
@@ -537,7 +537,7 @@ async def fetch_ai_mention_reply(
             f"{sender_name} says to you: {mention_message}\n\n"
             "Read the recent chat above carefully to understand who or what they are referring to. "
             "Words like 'him', 'usko', 'is bande ko', 'isko' refer to someone mentioned in the recent chat above — figure out who.\n"
-            "If they asked you to roast someone, find that person in the chat and roast them using something specific they actually said.\n"
+            "If they asked you to roast someone and you can see a name — DO IT. Output the roast directly. Use something from the chat as material. Do not explain, do not ask questions, just roast.\n"
             "If they asked you something else, use the chat context to give a relevant answer.\n"
             "If nothing was said or you have no context, ask what they want.\n"
             "IMPORTANT: never ask for clarification. if you can see a name or person in the chat, commit to a response immediately.\n"
@@ -548,7 +548,7 @@ async def fetch_ai_mention_reply(
         top_p=0.85,
         presence_penalty=0.3,
         frequency_penalty=0.3,
-    ))
+    ), max_words=25)
 
 
 async def _groq_request(
