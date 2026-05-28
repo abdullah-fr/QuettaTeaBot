@@ -262,7 +262,7 @@ async def fetch_ai_dead_chat_starter() -> str | None:
     )
     if not groq_key:
         return None
-    return await _groq_request(
+    return _validate_reply(await _groq_request(
         api_key=groq_key,
         system=(
             "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
@@ -280,7 +280,7 @@ async def fetch_ai_dead_chat_starter() -> str | None:
         user="the chat has been quiet for a while. say something casual.",
         max_tokens=25,
         temperature=1.2,
-    )
+    ))
 
 
 # ==================== AI SUMMARIZATION ====================
@@ -363,9 +363,9 @@ async def fetch_ai_persona_reply(
         ),
         max_tokens=50,
         temperature=0.88,
-        top_p=0.92,
-        presence_penalty=0.4,
-        frequency_penalty=0.35,
+        top_p=0.90,
+        presence_penalty=0.2,
+        frequency_penalty=0.2,
     ))
 
 
@@ -402,8 +402,8 @@ def _build_context_block(messages: list[str]) -> str:
 
 _BANNED_OUTPUT_PHRASES = [
     "my whole",
-    "digital",
-    "existence",
+    "digital sovereignty",
+    "digital existence",
     "meditation",
     "abducted",
     "aliens",
