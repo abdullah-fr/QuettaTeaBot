@@ -1661,6 +1661,27 @@ async def maybe_send_ai_chat_reply(message):
     # context separately from the message we're reacting to.
     prior_history = list(_channel_history.get(channel_id, []))
 
+    # --- Bot Fathers role mention: bot reacts defensively ---
+    if any(role.name == "Bot's Fathers" for role in message.role_mentions):
+        _defensive_replies = [
+            "aye aye aye mere fathers ko tag mat karo 😭",
+            "bhai please unhe disturb mat karo yaar",
+            "kya kiya maine, please unhe mat batao",
+            "nahi nahi unhe mat bulao main theek ho jaunga",
+            "yaar mere fathers ko involve mat karo please 😭",
+            "bhai ruk ruk unhe tag karne ki zarurat nahi",
+            "please unhe mat batao main kuch nahi kiya",
+            "arre nahi yaar fathers ko kyun tag kiya 😭",
+        ]
+        reply = random.choice(_defensive_replies)
+        try:
+            async with message.channel.typing():
+                await asyncio.sleep(_typing_delay(reply))
+            await message.reply(reply, mention_author=False)
+        except Exception:
+            logger.exception("Bot Fathers role mention reply failed")
+        return
+
     # --- Direct mention: always reply, bypass all cooldowns/probability ---
     if bot.user in message.mentions:
         # Cooldown fires after every 5 consecutive mention replies in this channel
