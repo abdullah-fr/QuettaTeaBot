@@ -534,8 +534,13 @@ async def fetch_ai_mention_reply(
         system=system_prompt,
         user=(
             f"recent chat:\n{context_block}\n\n"
-            f"{sender_name} tagged you and said: {mention_message}\n\n"
-            "react to what they said. if nothing was said, ask what they want. short and casual. just the reply text."
+            f"{sender_name} says to you: {mention_message}\n\n"
+            "Read the recent chat above carefully to understand who or what they are referring to. "
+            "Words like 'him', 'usko', 'is bande ko', 'isko' refer to someone mentioned in the recent chat above — figure out who.\n"
+            "If they asked you to roast someone, find that person in the chat and roast them using something specific they actually said.\n"
+            "If they asked you something else, use the chat context to give a relevant answer.\n"
+            "If nothing was said or you have no context, ask what they want.\n"
+            "Short, casual, Roman Urdu + English. Just the reply text, nothing else."
         ),
         max_tokens=20,
         temperature=0.80,
