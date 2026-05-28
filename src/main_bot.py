@@ -1465,6 +1465,8 @@ async def _update_user_profile(message: discord.Message) -> None:
 # Cooldowns: per-channel and per-user to avoid spam
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
+_mention_cooldowns: dict[int, float] = {}
+_MENTION_COOLDOWN = 30  # seconds between mention replies per user
 _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
@@ -1649,6 +1651,8 @@ async def maybe_send_ai_chat_reply(message):
 
     # --- Direct mention: always reply, bypass all cooldowns/probability ---
     if bot.user in message.mentions:
+        if now - _mention_cooldowns.get(user_id, 0) < _MENTION_COOLDOWN:
+            return
         if channel_id not in _channel_history:
             _channel_history[channel_id] = []
         _channel_history[channel_id].append(
@@ -1669,6 +1673,9 @@ async def maybe_send_ai_chat_reply(message):
             prior_history,
         )
         if reply and len(reply) > 2:
+            recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
+            if _is_too_similar_to_recent(reply, recent_replies_mention):
+                return
             if not _has_custom_emoji_token(reply) and random.random() < 0.60:
                 custom_emoji = _pick_ai_custom_emoji(
                     content_lower, reply, emoji_tokens_by_name
@@ -1681,6 +1688,7 @@ async def maybe_send_ai_chat_reply(message):
                 await message.reply(reply, mention_author=True)
                 _channel_cooldowns[channel_id] = now
                 _user_cooldowns[user_id] = now
+                _mention_cooldowns[user_id] = now
                 if channel_id not in _recent_bot_replies:
                     _recent_bot_replies[channel_id] = deque(
                         maxlen=_RECENT_REPLIES_PER_CHANNEL
