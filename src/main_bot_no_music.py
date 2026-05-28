@@ -1721,6 +1721,36 @@ async def maybe_send_ai_chat_reply(message):
         "missing you",
         "cuddle",
         "bbg",
+        # grief / loss
+        "loss",
+        "passed away",
+        "wafat",
+        "intiqal",
+        "jannat",
+        "jannah",
+        "maghfirat",
+        "sabr",
+        "inna lillahi",
+        "innalillahi",
+        "may allah",
+        "jazak allah",
+        "jazakallah",
+        "rahmat",
+        "guzar gaye",
+        "guzar gaya",
+        "nahi rahe",
+        "nahi rahi",
+        "miss him",
+        "miss her",
+        "miss them",
+        "parents",
+        "ammi",
+        "abbu",
+        "walida",
+        "walid",
+        "condolence",
+        "sorry for your loss",
+        "eid ke baad",
     ]
     if any(k in content_lower for k in serious_keywords):
         return
@@ -1761,9 +1791,9 @@ async def maybe_send_ai_chat_reply(message):
         "skill issue",
     ]
     is_funny = any(k in content_lower for k in funny_keywords)
-    base_chance = 0.22 if is_funny else 0.10
+    base_chance = 0.015 if is_funny else 0.004
     if is_active_chat:
-        base_chance *= 2.0
+        base_chance *= 1.5
 
     if not is_active_chat and not is_funny:
         return
