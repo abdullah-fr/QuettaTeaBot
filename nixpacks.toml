@@ -8,4 +8,4 @@ cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"
 cmds = ["python -m py_compile src/main_bot.py", "python -m py_compile src/ramadan_features.py", "python -m py_compile src/music_player.py"]
 
 [start]
-cmd = "cd src && python main_bot.py"
+cmd = "python src/main_bot.py"

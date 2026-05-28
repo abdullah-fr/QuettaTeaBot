@@ -1480,6 +1480,7 @@ _channel_objects: dict[int, discord.TextChannel] = {}
 _proactive_last_fired: dict[int, float] = {}
 _PROACTIVE_QUIET_MIN = 1800  # channel must be quiet for at least 30 min
 _PROACTIVE_QUIET_MAX = 7200  # but not more than 2 hrs (then it's just dead)
+_PROACTIVE_ALLOWED_CHANNELS = {"general", "General", "boises", "bot-tunning"}
 _PROACTIVE_COOLDOWN = 10800  # 3 hrs minimum between proactive fires per channel
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
@@ -1625,7 +1626,7 @@ async def maybe_send_ai_chat_reply(message):
     cleaned_content = _sanitize_ai_history_content((message.content or "")[:200])
 
     # Track recent messages for context
-    if now - _channel_last_seen.get(channel_id, 0) > 180:
+    if now - _channel_last_seen.get(channel_id, 0) > 900:
         _channel_history[channel_id] = []
     _channel_last_seen[channel_id] = now
     if isinstance(message.channel, discord.TextChannel):
@@ -1791,7 +1792,7 @@ async def maybe_send_ai_chat_reply(message):
         "skill issue",
     ]
     is_funny = any(k in content_lower for k in funny_keywords)
-    base_chance = 0.015 if is_funny else 0.004
+    base_chance = 0.06 if is_funny else 0.02
     if is_active_chat:
         base_chance *= 1.5
 
@@ -2155,16 +2156,6 @@ async def on_member_remove(member: discord.Member):
     await channel.send(embed=embed)
 
 
-@bot.event
-async def on_ready_invite_cache():
-    """Cache invites on startup so we can track who invited whom."""
-    bot._invite_cache = {}
-    for guild in bot.guilds:
-        try:
-            bot._invite_cache[guild.id] = await guild.invites()
-        except Exception:
-            pass
-
 
 # ==================== BOT READY ====================
 _bot_started_at: datetime | None = None
@@ -2196,7 +2187,8 @@ async def proactive_chat_check():
     candidates = [
         (cid, ch)
         for cid, ch in _channel_objects.items()
-        if _PROACTIVE_QUIET_MIN
+        if ch.name in _PROACTIVE_ALLOWED_CHANNELS
+        and _PROACTIVE_QUIET_MIN
         <= now - _channel_last_seen.get(cid, 0)
         <= _PROACTIVE_QUIET_MAX
         and now - _proactive_last_fired.get(cid, 0) >= _PROACTIVE_COOLDOWN
