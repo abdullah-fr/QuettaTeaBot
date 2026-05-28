@@ -540,9 +540,10 @@ async def fetch_ai_mention_reply(
             "If they asked you to roast someone, find that person in the chat and roast them using something specific they actually said.\n"
             "If they asked you something else, use the chat context to give a relevant answer.\n"
             "If nothing was said or you have no context, ask what they want.\n"
+            "IMPORTANT: never ask for clarification. if you can see a name or person in the chat, commit to a response immediately.\n"
             "Short, casual, Roman Urdu + English. Just the reply text, nothing else."
         ),
-        max_tokens=45,
+        max_tokens=60,
         temperature=0.80,
         top_p=0.85,
         presence_penalty=0.3,
