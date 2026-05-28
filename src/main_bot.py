@@ -1506,6 +1506,20 @@ LOW_SIGNAL_AI_MESSAGES = {
 }
 
 
+def _resolve_mentions(content: str, message: discord.Message) -> str:
+    """Replace <@userid> Discord mention tokens with display names."""
+    import re
+
+    def _replace(match):
+        uid = int(match.group(1))
+        member = message.guild.get_member(uid)
+        if member:
+            return f"@{member.display_name}"
+        return "@someone"
+
+    return re.sub(r"<@!?(\d+)>", _replace, content)
+
+
 def _sanitize_ai_history_content(content: str) -> str:
     import re
 
@@ -1620,7 +1634,7 @@ async def maybe_send_ai_chat_reply(message):
     channel_id = message.channel.id
     user_id = message.author.id
     content_lower = message.content.lower() if message.content else ""
-    cleaned_content = _sanitize_ai_history_content((message.content or "")[:200])
+    cleaned_content = _sanitize_ai_history_content(_resolve_mentions((message.content or "")[:200], message))
 
     # Track recent messages for context
     if now - _channel_last_seen.get(channel_id, 0) > 900:
@@ -1647,7 +1661,7 @@ async def maybe_send_ai_chat_reply(message):
             if not e.animated
         }
         emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
-        mention_text = cleaned_content.replace(f"<@{bot.user.id}>", "").strip()
+        mention_text = _resolve_mentions(cleaned_content.replace(f"<@{bot.user.id}>", ""), message).strip()
         reply = await fetch_ai_mention_reply(
             mention_text or "(just pinged, no message)",
             message.author.display_name,

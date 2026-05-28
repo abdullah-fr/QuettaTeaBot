@@ -542,7 +542,7 @@ async def fetch_ai_mention_reply(
             "If nothing was said or you have no context, ask what they want.\n"
             "Short, casual, Roman Urdu + English. Just the reply text, nothing else."
         ),
-        max_tokens=20,
+        max_tokens=45,
         temperature=0.80,
         top_p=0.85,
         presence_penalty=0.3,
