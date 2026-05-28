@@ -1466,7 +1466,16 @@ async def _update_user_profile(message: discord.Message) -> None:
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _mention_cooldowns: dict[int, float] = {}
-_MENTION_COOLDOWN = 30  # seconds between mention replies per user
+_MENTION_COOLDOWN = 30  # seconds cooldown after every 5 consecutive mention replies
+_mention_reply_count: dict[int, int] = {}  # consecutive reply count per channel
+_MENTION_COOLDOWN_AFTER = 5  # trigger cooldown after this many replies
+
+# Bot Fathers — always get respectful replies starting with "father" / "abba g"
+_BOT_FATHERS: dict[str, str] = {
+    "naamwahab": "Artist",
+    "aalu_01": "ProdigyAalu",
+    "abdullah_fr": "Abdullah",
+}
 _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
@@ -1651,7 +1660,7 @@ async def maybe_send_ai_chat_reply(message):
 
     # --- Direct mention: always reply, bypass all cooldowns/probability ---
     if bot.user in message.mentions:
-        if now - _mention_cooldowns.get(user_id, 0) < _MENTION_COOLDOWN:
+        if now - _mention_cooldowns.get(channel_id, 0) < _MENTION_COOLDOWN:
             return
         if channel_id not in _channel_history:
             _channel_history[channel_id] = []
@@ -1666,11 +1675,23 @@ async def maybe_send_ai_chat_reply(message):
         }
         emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
         mention_text = _resolve_mentions(cleaned_content.replace(f"<@{bot.user.id}>", ""), message).strip()
+        # Inject bot's own recent replies so the model sees the full conversation
+        bot_recent = [
+            f"YourWorstNightMare: {r}"
+            for r in list(_recent_bot_replies.get(channel_id, ()))[-5:]
+        ]
+        full_mention_history = prior_history + bot_recent
+
+        # Check if sender is a Bot Father
+        sender_username = message.author.name.lower()
+        is_bot_father = sender_username in _BOT_FATHERS
+
         reply = await fetch_ai_mention_reply(
             mention_text or "(just pinged, no message)",
             message.author.display_name,
             emoji_names,
-            prior_history,
+            full_mention_history,
+            is_bot_father=is_bot_father,
         )
         if reply and len(reply) > 2:
             recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
@@ -1688,7 +1709,11 @@ async def maybe_send_ai_chat_reply(message):
                 await message.reply(reply, mention_author=True)
                 _channel_cooldowns[channel_id] = now
                 _user_cooldowns[user_id] = now
-                _mention_cooldowns[user_id] = now
+                # Track consecutive replies; trigger cooldown after 5
+                _mention_reply_count[channel_id] = _mention_reply_count.get(channel_id, 0) + 1
+                if _mention_reply_count[channel_id] >= _MENTION_COOLDOWN_AFTER:
+                    _mention_cooldowns[channel_id] = now
+                    _mention_reply_count[channel_id] = 0
                 if channel_id not in _recent_bot_replies:
                     _recent_bot_replies[channel_id] = deque(
                         maxlen=_RECENT_REPLIES_PER_CHANNEL
