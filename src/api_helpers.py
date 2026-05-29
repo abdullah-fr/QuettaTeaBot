@@ -24,6 +24,16 @@ _GEMINI_URL = (
 )
 
 
+def _get_gemini_key() -> str | None:
+    """Return the Gemini API key regardless of whether it's a SecretStr or plain str."""
+    key = settings.gemini_api_key
+    if not key:
+        return None
+    if hasattr(key, "get_secret_value"):
+        return key.get_secret_value()
+    return str(key)
+
+
 async def _fetch_json(
     url: str,
     headers: dict[str, str] | None = None,
@@ -365,7 +375,7 @@ async def _gemini_request(
 # ==================== AI DEAD CHAT STARTER ====================
 async def fetch_ai_dead_chat_starter() -> str | None:
     gemini_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        _get_gemini_key()
     )
     if not gemini_key:
         return None
@@ -388,7 +398,7 @@ async def fetch_ai_dead_chat_starter() -> str | None:
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text: str) -> str | None:
     gemini_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        _get_gemini_key()
     )
     if not gemini_key:
         logger.warning("GEMINI_API_KEY not set. Skipping AI summary.")
@@ -429,7 +439,7 @@ async def fetch_ai_persona_reply(
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
     gemini_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        _get_gemini_key()
     )
     if not gemini_key:
         return None
@@ -475,7 +485,7 @@ async def fetch_ai_chat_reply(
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
     gemini_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        _get_gemini_key()
     )
     if not gemini_key:
         return None
@@ -534,7 +544,7 @@ async def fetch_ai_mention_reply(
     recent_messages: list[str],
 ) -> str | None:
     gemini_key = (
-        settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
+        _get_gemini_key()
     )
     if not gemini_key:
         return None
