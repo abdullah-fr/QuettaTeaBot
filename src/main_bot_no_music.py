@@ -1469,9 +1469,9 @@ async def _update_user_profile(message: discord.Message) -> None:
 _channel_cooldowns: dict[int, float] = {}
 _user_cooldowns: dict[int, float] = {}
 _mention_cooldowns: dict[int, float] = {}
-_MENTION_COOLDOWN = 30  # seconds cooldown after every 5 consecutive mention replies
+_MENTION_COOLDOWN = 60  # seconds cooldown after every 3 consecutive mention replies
 _mention_reply_count: dict[int, int] = {}  # consecutive reply count per channel
-_MENTION_COOLDOWN_AFTER = 5  # trigger cooldown after this many replies
+_MENTION_COOLDOWN_AFTER = 3  # trigger cooldown after this many replies
 
 # Bot Fathers — always get respectful replies starting with "father" / "abba g"
 _BOT_FATHERS: dict[str, str] = {
@@ -2276,7 +2276,7 @@ async def proactive_chat_check():
         _channel_last_seen[channel_id] = now
         logger.info(
             "proactive chat starter sent",
-            extra={"channel": channel.name, "message": starter},
+            extra={"channel": channel.name, "starter": starter},
         )
     except Exception:
         logger.exception("proactive chat starter failed")
