@@ -429,8 +429,8 @@ if __name__ == "__main__":
         "duration": 0.35,
         "tests": [
             {
-                "name": "test_iftar_countdown_one_hour_remaining",
-                "path": "tests/features/test_iftar_countdown.py",
+                "name": "test_project_structure_exists",
+                "path": "tests/test_smoke.py::TestProjectSetup",
                 "status": "passed",
                 "duration": 0.028,
             },

@@ -18,7 +18,6 @@ A feature-rich Discord bot built for the **Quetta Tea Corner** community server.
 - Context-aware — reads recent chat history before replying
 - Vibe detection — higher chance during funny/chaotic moments
 - Serious topic detection — never replies during sensitive conversations
-- Per-channel and per-user cooldowns to avoid spam
 - Uses server custom emojis naturally
 
 ### 🛡️ Moderation

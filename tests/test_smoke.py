@@ -35,7 +35,6 @@ class TestProjectSetup(BaseTest):
 
         # Check critical files
         assert os.path.exists(os.path.join(src_dir, "main_bot.py"))
-        assert os.path.exists(os.path.join(src_dir, "ramadan_features.py"))
         assert os.path.exists(os.path.join(src_dir, "api_helpers.py"))
         assert os.path.exists(os.path.join(src_dir, "question_bank.py"))
 

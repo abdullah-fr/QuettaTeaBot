@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -1462,20 +1466,6 @@ async def _update_user_profile(message: discord.Message) -> None:
 
 # ==================== INTELLIGENT AUTO-REPLY SYSTEM ====================
 
-# Cooldowns: per-channel and per-user to avoid spam
-_channel_cooldowns: dict[int, float] = {}
-_user_cooldowns: dict[int, float] = {}
-_mention_cooldowns: dict[int, float] = {}
-_MENTION_COOLDOWN = 60  # seconds cooldown after every 3 consecutive mention replies
-_mention_reply_count: dict[int, int] = {}  # consecutive reply count per channel
-_MENTION_COOLDOWN_AFTER = 3  # trigger cooldown after this many replies
-
-# Bot Fathers — always get respectful replies starting with "father" / "abba g"
-_BOT_FATHERS: dict[str, str] = {
-    "naamwahab": "Artist",
-    "aalu_01": "ProdigyAalu",
-    "abdullah_fr": "Abdullah",
-}
 _channel_history: dict[int, list[str]] = {}
 _channel_last_seen: dict[int, float] = {}
 _last_replied_users: dict[int, int] = {}
@@ -1643,7 +1633,6 @@ async def maybe_send_ai_chat_reply(message):
 
     now = time.time()
     channel_id = message.channel.id
-    user_id = message.author.id
     content_lower = message.content.lower() if message.content else ""
     cleaned_content = _sanitize_ai_history_content(_resolve_mentions((message.content or "")[:200], message))
 
@@ -1679,10 +1668,8 @@ async def maybe_send_ai_chat_reply(message):
             logger.exception("Bot Fathers role mention reply failed")
         return
 
-    # --- Direct mention: always reply, bypass all cooldowns/probability ---
+    # --- Direct mention: always reply, bypass probability ---
     if bot.user in message.mentions:
-        if now - _mention_cooldowns.get(channel_id, 0) < _MENTION_COOLDOWN:
-            return
         if channel_id not in _channel_history:
             _channel_history[channel_id] = []
         _channel_history[channel_id].append(
@@ -1703,16 +1690,11 @@ async def maybe_send_ai_chat_reply(message):
         ]
         full_mention_history = prior_history + bot_recent
 
-        # Check if sender is a Bot Father
-        sender_username = message.author.name.lower()
-        is_bot_father = sender_username in _BOT_FATHERS
-
         reply = await fetch_ai_mention_reply(
             mention_text or "(just pinged, no message)",
             message.author.display_name,
             emoji_names,
             full_mention_history,
-            is_bot_father=is_bot_father,
         )
         if reply and len(reply) > 2:
             recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
@@ -1728,13 +1710,6 @@ async def maybe_send_ai_chat_reply(message):
                 async with message.channel.typing():
                     await asyncio.sleep(_typing_delay(reply))
                 await message.reply(reply, mention_author=True)
-                _channel_cooldowns[channel_id] = now
-                _user_cooldowns[user_id] = now
-                # Track consecutive replies; trigger cooldown after 5
-                _mention_reply_count[channel_id] = _mention_reply_count.get(channel_id, 0) + 1
-                if _mention_reply_count[channel_id] >= _MENTION_COOLDOWN_AFTER:
-                    _mention_cooldowns[channel_id] = now
-                    _mention_reply_count[channel_id] = 0
                 if channel_id not in _recent_bot_replies:
                     _recent_bot_replies[channel_id] = deque(
                         maxlen=_RECENT_REPLIES_PER_CHANNEL
@@ -1821,13 +1796,8 @@ async def maybe_send_ai_chat_reply(message):
     if any(k in content_lower for k in serious_keywords):
         return
 
-    # Cooldown checks — channel: 45s, user: 75s
-    channel_last = _channel_cooldowns.get(channel_id, 0)
-    user_last = _user_cooldowns.get(user_id, 0)
-    if now - channel_last < 45 or now - user_last < 75:
-        return
-
     # Avoid replying to same person twice in a row per channel
+    user_id = message.author.id
     if _last_replied_users.get(channel_id) == user_id:
         return
 
@@ -1930,8 +1900,6 @@ async def maybe_send_ai_chat_reply(message):
         async with message.channel.typing():
             await asyncio.sleep(_typing_delay(reply))
         await message.reply(reply, mention_author=False)
-        _channel_cooldowns[channel_id] = now
-        _user_cooldowns[user_id] = now
         _last_replied_users[channel_id] = user_id
         if channel_id not in _recent_bot_replies:
             _recent_bot_replies[channel_id] = deque(maxlen=_RECENT_REPLIES_PER_CHANNEL)

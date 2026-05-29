@@ -532,8 +532,6 @@ async def fetch_ai_mention_reply(
     sender_name: str,
     server_emojis: list[str],
     recent_messages: list[str],
-    *,
-    is_bot_father: bool = False,
 ) -> str | None:
     gemini_key = (
         settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else None
@@ -541,44 +539,29 @@ async def fetch_ai_mention_reply(
     if not gemini_key:
         return None
 
-    emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
+    emoji_sample = random.sample(server_emojis, k=min(20, len(server_emojis)))
+    emoji_hint = ", ".join(emoji_sample) if emoji_sample else "none available"
     trimmed_history = _trim_history_to_budget(recent_messages, _HISTORY_CHAR_BUDGET)
     context_block = _build_context_block(trimmed_history)
 
-    if is_bot_father:
-        system_prompt = (
-            "You are a member of a Pakistani Discord server. Someone just tagged you.\n\n"
-            "This person is one of your creators. Treat them with genuine respect and warmth — like talking to a parent.\n\n"
-            "GREETING RULE — follow strictly:\n"
-            "- Roman Urdu or mixed reply → start with 'abba g,'\n"
-            "- Fully English reply → start with 'father,'\n"
-            "- Never mix these up.\n\n"
-            "TONE: Warm, respectful, slightly playful. Never argue back or be dismissive. "
-            "If they say 'meri marzi' or 'tameez se reh' — respond humbly.\n\n"
-            "STYLE: 6-14 words, lowercase, no asterisks.\n"
-            "ALWAYS start with 'abba g,' or 'father,'\n"
-            f"Available server emojis: {emoji_hint}\n\n"
-            "Output only the reply."
-        )
-    else:
-        system_prompt = (
-            "You are a member of a Pakistani Discord server. Someone just tagged you.\n\n"
-            "Your own previous replies appear in the chat history as 'YourWorstNightMare: ...'.\n"
-            "Read the full conversation to understand what's already been said.\n\n"
-            "HOW TO RESPOND:\n"
-            "- React to the current moment, not just the tag\n"
-            "- If you already roasted/answered/joked — don't repeat it, move forward\n"
-            "- If they push back on what you said, respond to that\n"
-            "- If they ask you to switch language, do it immediately\n"
-            "- If asked to roast someone and you see their name in chat — DO IT immediately, "
-            "use something they actually said, no questions asked\n"
-            "- Be dry, sarcastic, or funny — match the energy\n\n"
-            "STYLE: Roman Urdu + English mix, lowercase, 6-14 words, no asterisks.\n"
-            "NEVER: repeat yourself, ask for clarification when context is clear, be theatrical, "
-            "start with lol/bro/omg.\n"
-            f"Available server emojis: {emoji_hint}\n\n"
-            "Output only the reply."
-        )
+    system_prompt = (
+        "You are a member of a Pakistani Discord server. Someone just tagged you.\n\n"
+        "Your own previous replies appear in the chat history as 'YourWorstNightMare: ...'.\n"
+        "Read the full conversation to understand what's already been said.\n\n"
+        "HOW TO RESPOND:\n"
+        "- React to the current moment, not just the tag\n"
+        "- If you already roasted/answered/joked — don't repeat it, move forward\n"
+        "- If they push back on what you said, respond to that\n"
+        "- If they ask you to switch language, do it immediately\n"
+        "- If asked to roast someone and you see their name in chat — DO IT immediately, "
+        "use something they actually said, no questions asked\n"
+        "- Be dry, sarcastic, or funny — match the energy\n\n"
+        "STYLE: Roman Urdu + English mix, lowercase, 6-14 words, no asterisks.\n"
+        "NEVER: repeat yourself, ask for clarification when context is clear, be theatrical, "
+        "start with lol/bro/omg, or always use the same emoji.\n"
+        f"Available server emojis: {emoji_hint}\n\n"
+        "Output only the reply."
+    )
 
     return _validate_reply(await _gemini_request(
         api_key=gemini_key,

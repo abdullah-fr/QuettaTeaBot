@@ -89,7 +89,6 @@ src/
   main_bot_no_music.py# Entry point without music (low-memory hosts)
   music_player.py     # yt-dlp + voice client wiring
   question_bank.py    # Static curated content (trivia/wyr/etc.)
-  ramadan_features.py # Sehri/iftar reminders + Hadith/Ayat scheduling
   retry_utils.py      # retry_async helper with exponential backoff
 tests/
   unit/               # Fast, isolated tests for individual modules

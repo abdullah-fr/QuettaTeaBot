@@ -5,7 +5,7 @@ nixPkgs = ["python312", "ffmpeg", "libopus"]
 cmds = ["python -m pip install --upgrade pip", "pip install -r requirements.txt"]
 
 [phases.build]
-cmds = ["python -m py_compile src/main_bot.py", "python -m py_compile src/ramadan_features.py", "python -m py_compile src/music_player.py"]
+cmds = ["python -m py_compile src/main_bot.py", "python -m py_compile src/music_player.py"]
 
 [start]
 cmd = "python src/main_bot.py"
