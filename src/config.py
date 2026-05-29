@@ -14,7 +14,7 @@ class Settings(BaseSettings):
         / "bot_data.json"
     )
     api_ninjas_key: Optional[SecretStr] = None
-    groq_api_key: Optional[SecretStr] = None
+    gemini_api_key: Optional[SecretStr] = None
     yt_dlp_cookies_file: Optional[str] = None
     yt_dlp_cookies_browser: Optional[str] = None
     yt_dlp_js_runtime: str = "node"
