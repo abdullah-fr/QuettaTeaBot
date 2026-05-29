@@ -2269,6 +2269,10 @@ async def on_ready():
     print("🤖 FULLY AUTOMATED BOT - Everything runs automatically!")
     print("📡 All features use unlimited APIs")
 
+    from api_helpers import _get_gemini_keys
+    gemini_keys = _get_gemini_keys()
+    print(f"🔑 Gemini API keys loaded: {len(gemini_keys)}")
+
     guild = bot.guilds[0]
 
     # Register persistent views
