@@ -38,7 +38,7 @@ def _get_gemini_keys() -> list[str]:
     return keys
 
 
-# Round-robin index — rotates across keys on each call
+# Tracks which key to try first — advances after each successful use
 _gemini_key_index: int = 0
 
 
@@ -357,8 +357,14 @@ async def _gemini_request(
         logger.warning("No Gemini API keys configured.")
         return None
 
-    # Try each key once before giving up
-    for attempt, key in enumerate(keys):
+    # Start from current index, try each key once
+    num_keys = len(keys)
+    start_index = _gemini_key_index % num_keys
+
+    for i in range(num_keys):
+        key_index = (start_index + i) % num_keys
+        key = keys[key_index]
+
         async def _request(k=key):
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -390,15 +396,18 @@ async def _gemini_request(
                 retries=1,
                 delay=0.5,
                 backoff=1.5,
-                log_message=f"Gemini request retry (key {attempt + 1})",
+                log_message=f"Gemini request retry (key {key_index + 1})",
             )
             if result is not None:
+                # Advance index so next request starts from the next key (round-robin)
+                global _gemini_key_index
+                _gemini_key_index = (key_index + 1) % num_keys
                 return result
         except RetryError:
-            if attempt < len(keys) - 1:
+            if i < num_keys - 1:
                 logger.warning(
                     "Gemini key exhausted, rotating to next key",
-                    extra={"key_index": attempt + 1},
+                    extra={"key_index": key_index + 1},
                 )
                 continue
             logger.error("All Gemini keys exhausted after retries")
