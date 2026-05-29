@@ -357,6 +357,8 @@ async def _gemini_request(
         logger.warning("No Gemini API keys configured.")
         return None
 
+    global _gemini_key_index
+
     # Start from current index, try each key once
     num_keys = len(keys)
     start_index = _gemini_key_index % num_keys
@@ -400,7 +402,6 @@ async def _gemini_request(
             )
             if result is not None:
                 # Advance index so next request starts from the next key (round-robin)
-                global _gemini_key_index
                 _gemini_key_index = (key_index + 1) % num_keys
                 return result
         except RetryError:
