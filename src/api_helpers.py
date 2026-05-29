@@ -24,14 +24,33 @@ _GEMINI_URL = (
 )
 
 
+def _get_gemini_keys() -> list[str]:
+    """Return all configured Gemini API keys as plain strings."""
+    keys = []
+    for attr in ("gemini_api_key_1", "gemini_api_key_2", "gemini_api_key_3", "gemini_api_key_4"):
+        val = getattr(settings, attr, None)
+        if not val:
+            continue
+        if hasattr(val, "get_secret_value"):
+            keys.append(val.get_secret_value())
+        else:
+            keys.append(str(val))
+    return keys
+
+
+# Round-robin index — rotates across keys on each call
+_gemini_key_index: int = 0
+
+
 def _get_gemini_key() -> str | None:
-    """Return the Gemini API key regardless of whether it's a SecretStr or plain str."""
-    key = settings.gemini_api_key
-    if not key:
+    """Return the next available Gemini API key (round-robin)."""
+    global _gemini_key_index
+    keys = _get_gemini_keys()
+    if not keys:
         return None
-    if hasattr(key, "get_secret_value"):
-        return key.get_secret_value()
-    return str(key)
+    key = keys[_gemini_key_index % len(keys)]
+    _gemini_key_index = (_gemini_key_index + 1) % len(keys)
+    return key
 
 
 async def _fetch_json(
@@ -311,13 +330,12 @@ _PERSONA_HISTORY_CHAR_BUDGET = 2500
 # ==================== GEMINI REQUEST ====================
 
 async def _gemini_request(
-    api_key: str,
     system: str,
     user: str,
     max_tokens: int = 200,
     temperature: float = 0.7,
 ) -> str | None:
-    """Shared Gemini API call using aiohttp."""
+    """Shared Gemini API call with automatic key rotation on 429."""
     payload: dict[str, Any] = {
         "system_instruction": {
             "parts": [{"text": system}]
@@ -334,53 +352,68 @@ async def _gemini_request(
         },
     }
 
-    async def _request():
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                _GEMINI_URL,
-                params={"key": api_key},
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=aiohttp.ClientTimeout(total=20),
-            ) as resp:
-                text = await resp.text()
-                if resp.status in (429, 500, 502, 503, 504):
-                    raise HttpStatusError(resp.status, text)
-                if resp.status != 200:
-                    logger.error(
-                        "Gemini API error",
-                        extra={"status": resp.status, "body": text[:300]},
-                    )
-                    return None
-                data = json.loads(text)
-                return (
-                    data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                )
+    keys = _get_gemini_keys()
+    if not keys:
+        logger.warning("No Gemini API keys configured.")
+        return None
 
-    try:
-        return await retry_async(
-            _request,
-            retries=2,
-            delay=0.8,
-            backoff=2.0,
-            log_message="Gemini request retry",
-        )
-    except RetryError:
-        logger.error("Failed to fetch Gemini response after retries")
-    except Exception:
-        logger.exception("Gemini request error")
+    # Try each key once before giving up
+    for attempt, key in enumerate(keys):
+        async def _request(k=key):
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    _GEMINI_URL,
+                    params={"key": k},
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as resp:
+                    text = await resp.text()
+                    if resp.status == 429:
+                        raise HttpStatusError(resp.status, text)
+                    if resp.status in (500, 502, 503, 504):
+                        raise HttpStatusError(resp.status, text)
+                    if resp.status != 200:
+                        logger.error(
+                            "Gemini API error",
+                            extra={"status": resp.status, "body": text[:300]},
+                        )
+                        return None
+                    data = json.loads(text)
+                    return (
+                        data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    )
+
+        try:
+            result = await retry_async(
+                _request,
+                retries=1,
+                delay=0.5,
+                backoff=1.5,
+                log_message=f"Gemini request retry (key {attempt + 1})",
+            )
+            if result is not None:
+                return result
+        except RetryError:
+            if attempt < len(keys) - 1:
+                logger.warning(
+                    "Gemini key exhausted, rotating to next key",
+                    extra={"key_index": attempt + 1},
+                )
+                continue
+            logger.error("All Gemini keys exhausted after retries")
+        except Exception:
+            logger.exception("Gemini request error")
+            return None
+
     return None
 
 
 # ==================== AI DEAD CHAT STARTER ====================
 async def fetch_ai_dead_chat_starter() -> str | None:
-    gemini_key = (
-        _get_gemini_key()
-    )
-    if not gemini_key:
+    if not _get_gemini_keys():
         return None
     return _validate_reply(await _gemini_request(
-        api_key=gemini_key,
         system=(
             "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server. "
             "The chat has gone quiet. Drop ONE casual message to revive it. "
@@ -397,14 +430,10 @@ async def fetch_ai_dead_chat_starter() -> str | None:
 
 # ==================== AI SUMMARIZATION ====================
 async def fetch_ai_summary(messages_text: str) -> str | None:
-    gemini_key = (
-        _get_gemini_key()
-    )
-    if not gemini_key:
-        logger.warning("GEMINI_API_KEY not set. Skipping AI summary.")
+    if not _get_gemini_keys():
+        logger.warning("No Gemini API keys configured. Skipping AI summary.")
         return None
     return await _gemini_request(
-        api_key=gemini_key,
         system=(
             "You are a Discord conversation summarizer. "
             "Your summaries are casual, accurate, and concise. "
@@ -438,10 +467,7 @@ async def fetch_ai_persona_reply(
     *,
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
-    gemini_key = (
-        _get_gemini_key()
-    )
-    if not gemini_key:
+    if not _get_gemini_keys():
         return None
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
@@ -465,7 +491,6 @@ async def fetch_ai_persona_reply(
     )
 
     return _validate_reply(await _gemini_request(
-        api_key=gemini_key,
         system=system_prompt,
         user=(
             f"Recent chat:\n{context_block}\n\n"
@@ -484,10 +509,7 @@ async def fetch_ai_chat_reply(
     *,
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
-    gemini_key = (
-        _get_gemini_key()
-    )
-    if not gemini_key:
+    if not _get_gemini_keys():
         return None
 
     emoji_hint = ", ".join(server_emojis[:20]) if server_emojis else "none available"
@@ -525,7 +547,6 @@ async def fetch_ai_chat_reply(
     )
 
     return _validate_reply(await _gemini_request(
-        api_key=gemini_key,
         system=system_prompt,
         user=(
             f"Recent chat (context only):\n{context_block}\n\n"
@@ -543,10 +564,7 @@ async def fetch_ai_mention_reply(
     server_emojis: list[str],
     recent_messages: list[str],
 ) -> str | None:
-    gemini_key = (
-        _get_gemini_key()
-    )
-    if not gemini_key:
+    if not _get_gemini_keys():
         return None
 
     emoji_sample = random.sample(server_emojis, k=min(20, len(server_emojis)))
@@ -574,7 +592,6 @@ async def fetch_ai_mention_reply(
     )
 
     return _validate_reply(await _gemini_request(
-        api_key=gemini_key,
         system=system_prompt,
         user=(
             f"Full conversation (your replies shown as YourWorstNightMare):\n{context_block}\n\n"
