@@ -374,7 +374,7 @@ async def _gemini_request(
                     params={"key": k},
                     json=payload,
                     headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=5),
+                    timeout=aiohttp.ClientTimeout(total=8),
                 ) as resp:
                     text = await resp.text()
                     if resp.status == 429:
@@ -412,8 +412,8 @@ async def _gemini_request(
                 )
                 continue
             logger.error("All Gemini keys exhausted after retries")
-        except Exception:
-            logger.exception("Gemini request error")
+        except Exception as e:
+            logger.exception("Gemini request error", extra={"key_index": key_index + 1, "error": str(e)})
             return None
 
     return None
