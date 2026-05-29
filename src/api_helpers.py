@@ -374,7 +374,7 @@ async def _gemini_request(
                     params={"key": k},
                     json=payload,
                     headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=20),
+                    timeout=aiohttp.ClientTimeout(total=10),
                 ) as resp:
                     text = await resp.text()
                     if resp.status == 429:
