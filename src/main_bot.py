@@ -654,7 +654,15 @@ CITY_ROLES = {
     "🔵 Multani":             "Multani",
     "🟣 Islamabadi/Pindi":    "Islamabadi/Pindi",
     "⚫ Quettaite":           "Quettaite",
-    "⚪ Other":               "Other",
+    "🟤 Gujranwali":          "Gujranwali",
+    "🔶 Hyderabadi":          "Hyderabadi",
+    "🔷 Sialkoti":            "Sialkoti",
+    "🟥 Bahawalpuri":         "Bahawalpuri",
+    "🟦 Sukkuri":             "Sukkuri",
+    "🟩 Abbottabadi":         "Abbottabadi",
+    "🔸 Gujrati":             "Gujrati",
+    "🔹 Jhelumi":             "Jhelumi",
+    "🏳️ Elsewhere 🇵🇰":      "Elsewhere",
     "🌍 International":       "International",
 }
 
