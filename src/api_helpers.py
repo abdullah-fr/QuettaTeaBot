@@ -573,6 +573,8 @@ async def fetch_ai_mention_reply(
     sender_name: str,
     server_emojis: list[str],
     recent_messages: list[str],
+    *,
+    bot_name: str = "QuettaTeaBot",
 ) -> str | None:
     if not _get_gemini_keys():
         return None
@@ -584,7 +586,7 @@ async def fetch_ai_mention_reply(
 
     system_prompt = (
         "You are a member of a Pakistani Discord server. Someone just tagged you.\n\n"
-        "Your own previous replies appear in the chat history as 'YourWorstNightMare: ...'.\n"
+        f"Your own previous replies appear in the chat history as '{bot_name}: ...'.\n"
         "Read the full conversation to understand what's already been said.\n\n"
         "HOW TO RESPOND:\n"
         "- React to the current moment, not just the tag\n"
@@ -604,7 +606,7 @@ async def fetch_ai_mention_reply(
     return _validate_reply(await _gemini_request(
         system=system_prompt,
         user=(
-            f"Full conversation (your replies shown as YourWorstNightMare):\n{context_block}\n\n"
+            f"Full conversation (your replies shown as {bot_name}):\n{context_block}\n\n"
             f"{sender_name} tagged you and said: {mention_message}\n\n"
             "React to where the conversation is right now. Don't repeat anything you already said. "
             "Commit to one clear response. Just the reply text, nothing else."

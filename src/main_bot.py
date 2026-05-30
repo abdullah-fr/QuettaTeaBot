@@ -1685,7 +1685,7 @@ async def maybe_send_ai_chat_reply(message):
         mention_text = _resolve_mentions(cleaned_content.replace(f"<@{bot.user.id}>", ""), message).strip()
         # Inject bot's own recent replies so the model sees the full conversation
         bot_recent = [
-            f"YourWorstNightMare: {r}"
+            f"{bot.user.name}: {r}"
             for r in list(_recent_bot_replies.get(channel_id, ()))[-5:]
         ]
         full_mention_history = prior_history + bot_recent
@@ -1695,6 +1695,7 @@ async def maybe_send_ai_chat_reply(message):
             message.author.display_name,
             emoji_names,
             full_mention_history,
+            bot_name=bot.user.name,
         )
         if reply and len(reply) > 2:
             recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
