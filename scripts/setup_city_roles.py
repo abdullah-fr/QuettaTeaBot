@@ -87,11 +87,17 @@ intents.members = True
 client = discord.Client(intents=intents)
 
 
+TARGET_GUILD_NAME = "Quetta Tea Corner ☕"
+
+
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
 
     for guild in client.guilds:
+        if guild.name != TARGET_GUILD_NAME:
+            print(f"⏭️  Skipping: {guild.name}")
+            continue
         print(f"📋 Setting up city roles in: {guild.name}")
 
         # Create roles that don't exist yet
