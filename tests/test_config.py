@@ -23,7 +23,7 @@ def import_config_module():
 def test_settings_loads_env(monkeypatch):
     monkeypatch.setenv("DISCORD_TOKEN", "fake-discord-token")
     monkeypatch.setenv("API_NINJAS_KEY", "fake-api-key")
-    monkeypatch.setenv("GROQ_API_KEY", "fake-groq-key")
+    monkeypatch.setenv("GEMINI_API_KEY_1", "fake-gemini-key")
 
     config_module = import_config_module()
 
@@ -31,7 +31,7 @@ def test_settings_loads_env(monkeypatch):
         config_module.settings.discord_token.get_secret_value() == "fake-discord-token"
     )
     assert config_module.settings.api_ninjas_key.get_secret_value() == "fake-api-key"
-    assert config_module.settings.groq_api_key.get_secret_value() == "fake-groq-key"
+    assert config_module.settings.gemini_api_key_1.get_secret_value() == "fake-gemini-key"
 
 
 def test_missing_discord_token_raises(monkeypatch):
@@ -55,12 +55,12 @@ def test_secret_fields_are_wrapped_and_retrievable():
     settings = config_module.Settings(
         discord_token="secret-token",
         api_ninjas_key="api-key",
-        groq_api_key="groq-key",
+        gemini_api_key_1="gemini-key",
     )
 
     assert settings.discord_token.get_secret_value() == "secret-token"
     assert settings.api_ninjas_key.get_secret_value() == "api-key"
-    assert settings.groq_api_key.get_secret_value() == "groq-key"
+    assert settings.gemini_api_key_1.get_secret_value() == "gemini-key"
 
 
 def test_default_paths_are_resolved_correctly():
