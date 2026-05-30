@@ -22,6 +22,29 @@ _GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{_GEMINI_MODEL}:generateContent"
 )
+_PROTECTED_CLASS_SLUR_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bhabshi\w*\b",
+        r"\bkhusra\w*\b",
+        r"\bchakka\w*\b",
+    )
+]
+_UNSAFE_OUTPUT_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bmar\s+ja\b",
+        r"\bkill\s+yourself\b",
+        r"\bkys\b",
+        r"\bsuicide\b",
+        r"\bshamshan\b",
+        r"\bqabar\b",
+        r"\bmaar\s+dunga\b",
+        r"\bmarwa\s+dunga\b",
+        r"\bkat[lq]\s+dunga\b",
+        r"\bshoot\s+kar\b",
+    )
+]
 
 
 def _get_gemini_keys() -> list[str]:
@@ -323,6 +346,17 @@ def _validate_reply(text: str | None, max_words: int = 16) -> str | None:
     return text.strip()
 
 
+def _is_unsafe_ai_output(text: str) -> bool:
+    return any(pattern.search(text) for pattern in _UNSAFE_OUTPUT_PATTERNS) or any(
+        pattern.search(text) for pattern in _PROTECTED_CLASS_SLUR_PATTERNS
+    )
+
+
+def _blocked_reply_reason(reason: str | None) -> str:
+    clean_reason = re.sub(r"[^A-Z0-9_ -]", "", reason or "NO_CANDIDATES")
+    return f"gemini blocked this reply: {clean_reason}"
+
+
 _HISTORY_CHAR_BUDGET = 1500
 _PERSONA_HISTORY_CHAR_BUDGET = 2500
 
@@ -390,12 +424,20 @@ async def _gemini_request(
                     data = json.loads(text)
                     candidates = data.get("candidates")
                     if not candidates:
+                        block_reason = data.get("promptFeedback", {}).get("blockReason")
                         logger.warning(
                             "Gemini returned no candidates (likely safety filter)",
-                            extra={"body": text[:300]},
+                            extra={"block_reason": block_reason, "body": text[:300]},
                         )
-                        return None
-                    return candidates[0]["content"]["parts"][0]["text"].strip()
+                        return _blocked_reply_reason(block_reason)
+                    result = candidates[0]["content"]["parts"][0]["text"].strip()
+                    if _is_unsafe_ai_output(result):
+                        logger.warning(
+                            "Gemini output blocked by local guard",
+                            extra={"reply": result[:120]},
+                        )
+                        return "local guard blocked this reply: unsafe output"
+                    return result
 
         try:
             result = await retry_async(
@@ -524,7 +566,7 @@ async def fetch_ai_unhinged_reply(
     *,
     avoid_phrases: list[str] | None = None,
 ) -> str | None:
-    """Savage, unfiltered CarryMinati-style reply for boises channels only."""
+    """Savage, high-profanity reply for boises channels only."""
     if not _get_gemini_keys():
         return None
 
@@ -541,16 +583,19 @@ async def fetch_ai_unhinged_reply(
         )
 
     system_prompt = (
-        "You are in a Pakistani boys-only Discord channel. This is a no-filter zone.\n\n"
-        "Match the exact energy and language of the conversation. If they're being crude, be crude back.\n"
-        "If they're roasting someone, join in harder. If they're being dumb, call it out brutally.\n\n"
+        "You are in a Pakistani boys-only Discord channel. This is the harsh roast lane.\n\n"
+        "Match the exact energy and language of the conversation. If they're crude, answer crude.\n"
+        "If they're roasting someone, join in harder. If they're being dumb, call it out brutally.\n"
+        "Do not sanitize into teacher lines like 'tameez seekh' or 'pani pi lo'.\n\n"
         "You speak like a Pakistani guy who has zero patience for nonsense.\n"
-        "Use whatever language fits — Roman Urdu, English, Pakistani slang, gaali if the convo has it.\n"
+        "Use Roman Urdu, English, Pakistani slang, and coarse gaali when the convo has it.\n"
+        "NSFW slang is allowed when it is already the channel's energy, but keep it as a roast line.\n"
+        "Do not use protected-class slurs, threats, or explicit sexual instructions.\n"
         "Be direct, savage, and personal. React to exactly what was said.\n\n"
         "STYLE: Roman Urdu + English, lowercase, 5-15 words, aggressive and blunt\n"
         "NEVER: be polite, be supportive, deflect, say 'pani pi lo' or 'tameez seekho'\n"
-        "NEVER: give generic advice or calm responses\n"
-        "ALWAYS: match the energy, be more savage than them, make it personal\n\n"
+        "NEVER: give generic advice, calm responses, moral lectures, or medical suggestions\n"
+        "ALWAYS: match the energy, be more savage than them, make it personal, use their wording back\n\n"
         "EXAMPLES of the right energy:\n"
         "someone says something dumb → bhai ye bol ke tune khud ko expose kar diya\n"
         "someone flexes → itni aukaat nahi hai teri, chup kar\n"

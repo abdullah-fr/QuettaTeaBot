@@ -1,24 +1,25 @@
 # QuettaTeaBot 🍵
 
-A feature-rich Discord bot built for the **Quetta Tea Corner** community server. Handles moderation utilities, entertainment, music playback, channel automation, and AI-powered chat replies.
+A feature-rich Discord bot built for the **Quetta Tea Corner ☕** community server. Handles moderation utilities, entertainment, channel automation, AI-powered chat replies, and city/role management.
+
+> **Deployed bot name:** PingAtYourOwnRisk
+> **Hosting:** Pterodactyl/FeatherPanel (no-music version)
+> **AI:** Google Gemini 3.1 Flash-Lite with 4-key rotation
 
 ---
 
 ## Features
 
-### 🎵 Music
-- `/play` — play any song by name or YouTube link with autocomplete
-- `/search` — search YouTube and pick from a dropdown
-- `/queue` — view the current queue
-- `/skip`, `/pause`, `/resume`, `/stop`, `/disconnect`
-- Now Playing card with ⏸ Pause, ⏭ Skip, ⏹ Stop buttons
-
 ### 🤖 AI Chat Replies
-- Randomly replies to conversations using Groq (llama-3.1-8b-instant)
-- Context-aware — reads recent chat history before replying
-- Vibe detection — higher chance during funny/chaotic moments
-- Serious topic detection — never replies during sensitive conversations
+- Randomly replies to conversations using **Gemini 3.1 Flash-Lite**
+- Context-aware — reads up to 15 recent messages before replying
+- Per-user persona profiles — learns each user's chat style over time
+- Proactive dead chat revival — drops a casual message when chat goes quiet
+- Serious topic detection — never replies during grief/condolence conversations
 - Uses server custom emojis naturally
+- **4-key Gemini rotation** — auto-switches keys on 429 rate limit
+- Output safety guard — blocks threats, self-harm phrases, and protected-class slurs
+- Bot self-mention stripping — cleans up `@BotName` from context before sending to AI
 
 ### 🛡️ Moderation
 - `/purge` — bulk delete up to 100 messages with filters (all, text, images, voice, links) and message link anchor
@@ -44,12 +45,13 @@ A feature-rich Discord bot built for the **Quetta Tea Corner** community server.
 - `/roast` — friendly roasts
 - `/compliment` — compliments
 - `/rekhta` — random Urdu poetry
-- `/pomodoro` — study timer
+- `/pomodoro` — study timer (up to 60 minutes)
 
 ### 🎨 Role Management
-- 37 color roles via button panel
-- Notification roles (VC Ping, Chat Ping, Game Ping, Event Ping)
-- Hobby roles (Gaming, Art, Music, Reading)
+- **37 color roles** via button panel (3 pages of 25)
+- **Notification roles** — VC Ping, Chat Ping, Game Ping, Event Ping
+- **Hobby roles** — Gaming, Art, Music, Reading
+- **17 city roles** — Karachite, Lahori, Faisalabadi, Peshawari, Multani, Islamabadi/Pindi, Quettaite, Gujranwala, Hyderabadi, Sialkoti, Bahawalpuri, Sukkuri, Abbottabadi, Gujrati, Jhelumi, Elsewhere 🇵🇰, International
 
 ### 📊 Utilities
 - `/stats` — server statistics
@@ -59,11 +61,22 @@ A feature-rich Discord bot built for the **Quetta Tea Corner** community server.
 
 ---
 
+## Two Bot Versions
+
+| Version | File | Use Case |
+|---|---|---|
+| Full (with music) | `src/main_bot.py` | Local / high-RAM hosting |
+| No music | `src/main_bot_no_music.py` | Pterodactyl / low-RAM hosting |
+
+> Music requires ffmpeg, libopus, and ~1GB RAM. The no-music version runs under 100MB.
+
+---
+
 ## Setup
 
 ### Requirements
 - Python 3.11+
-- ffmpeg (for music)
+- ffmpeg (only for music version)
 
 ### Installation
 
@@ -75,7 +88,7 @@ python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-# Windows (PowerShell)
+# Windows
 .venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
@@ -87,25 +100,45 @@ Copy `.env.example` to `.env` and fill in:
 
 ```env
 DISCORD_TOKEN=your_bot_token
-GROQ_API_KEY=your_groq_key        # free at console.groq.com
-API_NINJAS_KEY=your_key           # optional, for riddles
+
+# Gemini AI — get free keys at aistudio.google.com
+# Use keys from different Google accounts for higher rate limits
+GEMINI_API_KEY_1=your_key_1
+GEMINI_API_KEY_2=your_key_2
+GEMINI_API_KEY_3=your_key_3
+GEMINI_API_KEY_4=your_key_4
+
+API_NINJAS_KEY=your_key   # optional, for riddles
 ```
 
 ### Running
 
 ```bash
-# With music (needs ~1 GB RAM, ffmpeg installed)
-python src/main_bot.py
-
-# Without music (for low-memory hosting)
+# Without music (recommended for hosted deployments)
 python src/main_bot_no_music.py
+
+# With music (needs ffmpeg + ~1GB RAM)
+python src/main_bot.py
 ```
 
 ---
 
-## Development
+## Deployment (Pterodactyl / FeatherPanel)
 
-For local development, testing, and contributing, see [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
+Set the startup command to:
+
+```bash
+if [[ -d .git ]] && [[ "${AUTO_UPDATE}" == "1" ]]; then git pull; fi; pip install -U -r requirements.txt --user; python src/main_bot_no_music.py
+```
+
+Set these environment variables in the panel:
+- `DISCORD_TOKEN`
+- `GEMINI_API_KEY_1` through `GEMINI_API_KEY_4`
+- `API_NINJAS_KEY` (optional)
+
+---
+
+## Development
 
 ```bash
 pip install -r requirements-dev.txt
@@ -114,18 +147,7 @@ black --check .
 flake8 src/ tests/
 ```
 
----
-
-## Deployment
-
-The bot includes a `nixpacks.toml` for platforms like Railway or Wispbyte.
-
-For Pterodactyl/FeatherPanel, use the Python Generic egg with:
-- **APP PY FILE**: `src/main_bot_no_music.py`
-- **REQUIREMENTS FILE**: `requirements.txt`
-- **USER UPLOADED FILES**: `1`
-
-> Music requires at least 1GB RAM. The no-music version runs comfortably under 100MB.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ---
 
@@ -134,11 +156,12 @@ For Pterodactyl/FeatherPanel, use the Python Generic egg with:
 - Read/Send Messages
 - Manage Messages
 - Manage Threads
+- Manage Roles
 - Add Reactions
 - Embed Links
-- Connect & Speak (for music)
-- View Audit Log (for invite tracking)
-- Manage Server (for invite tracking)
+- Connect & Speak (music version only)
+- View Audit Log (invite tracking)
+- Manage Server (invite tracking)
 
 ---
 

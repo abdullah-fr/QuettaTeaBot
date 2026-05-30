@@ -1541,6 +1541,7 @@ _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
 _RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+_UNHINGED_CHANNELS = {"boises", "apnay-boises"}
 
 # Proactive dead-chat state
 _channel_objects: dict[int, discord.TextChannel] = {}
@@ -1588,6 +1589,23 @@ def _resolve_mentions(content: str, message: discord.Message) -> str:
         return "@someone"
 
     return re.sub(r"<@!?(\d+)>", _replace, content)
+
+
+def _strip_bot_self_mentions(content: str, bot_user: discord.ClientUser | None) -> str:
+    if not bot_user:
+        return content
+
+    import re
+
+    content = re.sub(rf"<@!?{bot_user.id}>", "", content)
+    bot_names = {
+        bot_user.name,
+        getattr(bot_user, "display_name", None),
+        str(bot_user).split("#", 1)[0],
+    }
+    for name in {n for n in bot_names if n}:
+        content = re.sub(rf"@{re.escape(name)}\b", "", content, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", content).strip()
 
 
 def _sanitize_ai_history_content(content: str) -> str:
@@ -1685,6 +1703,16 @@ def _is_too_similar_to_recent(candidate: str, recent: list[str]) -> bool:
     return False
 
 
+def _is_system_block_reply(reply: str) -> bool:
+    return reply.startswith(("gemini blocked this reply:", "local guard blocked this reply:"))
+
+
+def _fix_emoji_tokens(text: str) -> str:
+    """Remove spaces inside Discord custom emoji tokens that Gemini sometimes adds."""
+    import re
+    return re.sub(r"<\s*:([A-Za-z0-9_~]+)\s*:\s*(\d+)\s*>", r"<:\1:\2>", text)
+
+
 def _typing_delay(reply: str) -> float:
     words = len(reply.split())
     if words <= 3:
@@ -1702,8 +1730,12 @@ async def maybe_send_ai_chat_reply(message):
 
     now = time.time()
     channel_id = message.channel.id
+    channel_name = message.channel.name if hasattr(message.channel, "name") else ""
     content_lower = message.content.lower() if message.content else ""
-    cleaned_content = _sanitize_ai_history_content(_resolve_mentions((message.content or "")[:200], message))
+    raw_content = (message.content or "")[:200]
+    cleaned_content = _sanitize_ai_history_content(
+        _resolve_mentions(_strip_bot_self_mentions(raw_content, bot.user), message)
+    )
 
     # Track recent messages for context
     if now - _channel_last_seen.get(channel_id, 0) > 900:
@@ -1751,7 +1783,7 @@ async def maybe_send_ai_chat_reply(message):
             if not e.animated
         }
         emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
-        mention_text = _resolve_mentions(cleaned_content.replace(f"<@{bot.user.id}>", ""), message).strip()
+        mention_text = cleaned_content.strip()
         # Inject bot's own recent replies so the model sees the full conversation
         bot_recent = [
             f"{bot.user.name}: {r}"
@@ -1759,24 +1791,40 @@ async def maybe_send_ai_chat_reply(message):
         ]
         full_mention_history = prior_history + bot_recent
 
-        reply = await fetch_ai_mention_reply(
-            mention_text or "(just pinged, no message)",
-            message.author.display_name,
-            emoji_names,
-            full_mention_history,
-            bot_name=bot.user.name,
-        )
+        recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
+        if channel_name in _UNHINGED_CHANNELS:
+            reply = await fetch_ai_unhinged_reply(
+                full_mention_history,
+                emoji_names,
+                mention_text or cleaned_content,
+                avoid_phrases=recent_replies_mention,
+            )
+        else:
+            reply = await fetch_ai_mention_reply(
+                mention_text or "(just pinged, no message)",
+                message.author.display_name,
+                emoji_names,
+                full_mention_history,
+                bot_name=bot.user.name,
+            )
         if reply and len(reply) > 2:
-            recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
-            if _is_too_similar_to_recent(reply, recent_replies_mention):
+            is_block_reply = _is_system_block_reply(reply)
+            if not is_block_reply and _is_too_similar_to_recent(
+                reply, recent_replies_mention
+            ):
                 return
-            if not _has_custom_emoji_token(reply) and random.random() < 0.60:
+            if (
+                not is_block_reply
+                and not _has_custom_emoji_token(reply)
+                and random.random() < 0.60
+            ):
                 custom_emoji = _pick_ai_custom_emoji(
                     content_lower, reply, emoji_tokens_by_name
                 )
                 if custom_emoji:
                     reply = f"{reply.rstrip()} {custom_emoji}"
             try:
+                reply = _fix_emoji_tokens(reply)
                 async with message.channel.typing():
                     await asyncio.sleep(_typing_delay(reply))
                 await message.reply(reply, mention_author=True)
@@ -1916,9 +1964,6 @@ async def maybe_send_ai_chat_reply(message):
 
     recent_replies = list(_recent_bot_replies.get(channel_id, ()))
 
-    # Unhinged mode for boises channels
-    _UNHINGED_CHANNELS = {"boises", "apnay-boises"}
-    channel_name = message.channel.name if hasattr(message.channel, "name") else ""
     if channel_name in _UNHINGED_CHANNELS:
         reply = await fetch_ai_unhinged_reply(
             prior_history,
@@ -1926,8 +1971,8 @@ async def maybe_send_ai_chat_reply(message):
             cleaned_content,
             avoid_phrases=recent_replies,
         )
-    # Use persona reply if this user has a mature profile, fallback to generic
     else:
+        # Use persona reply if this user has a mature profile, fallback to generic
         profile = _user_profiles.get(str(user_id))
         has_persona = (
             profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
@@ -1960,8 +2005,10 @@ async def maybe_send_ai_chat_reply(message):
     if not reply or len(reply) <= 2:
         return
 
+    is_block_reply = _is_system_block_reply(reply)
+
     # Anti-repetition guard: drop near-duplicates of the bot's recent replies.
-    if _is_too_similar_to_recent(reply, recent_replies):
+    if not is_block_reply and _is_too_similar_to_recent(reply, recent_replies):
         logger.info(
             "AI reply suppressed as repetitive",
             extra={"channel_id": channel_id, "reply": reply[:60]},
@@ -1969,15 +2016,16 @@ async def maybe_send_ai_chat_reply(message):
         return
 
     # Random "think and say nothing" — feels human
-    if random.random() <= 0.20:
+    if not is_block_reply and random.random() <= 0.20:
         return
 
-    if not _has_custom_emoji_token(reply) and random.random() < 0.70:
+    if not is_block_reply and not _has_custom_emoji_token(reply) and random.random() < 0.70:
         custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
         if custom_emoji:
             reply = f"{reply.rstrip()} {custom_emoji}"
 
     try:
+        reply = _fix_emoji_tokens(reply)
         async with message.channel.typing():
             await asyncio.sleep(_typing_delay(reply))
         await message.reply(reply, mention_author=False)

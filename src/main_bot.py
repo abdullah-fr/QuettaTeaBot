@@ -40,6 +40,7 @@ from api_helpers import (
     fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
+    fetch_ai_unhinged_reply,
 )
 from music_player import setup_music_commands
 
@@ -550,6 +551,7 @@ async def on_voice_state_update(member, before, after):
     name="vctime", description="Check your voice chat time in this server"
 )
 async def vctime(interaction: discord.Interaction):
+    await interaction.response.defer()
     user_id = str(interaction.user.id)
     guild_id = str(interaction.guild.id)
     server_key = f"{user_id}_{guild_id}"
@@ -568,11 +570,11 @@ async def vctime(interaction: discord.Interaction):
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{interaction.guild.name}**!"
         )
     else:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "You haven't joined any voice channels in this server yet! Join a VC to start tracking your time."
         )
 
@@ -677,12 +679,15 @@ class CityRoleButton(Button):
         self.role_name = role_name
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         role = discord.utils.get(interaction.guild.roles, name=self.role_name)
         if not role:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"⚠️ Role '{self.role_name}' not found!", ephemeral=True
             )
             return
+
+        # Remove any other city roles the user has
         city_role_names = list(CITY_ROLES.values())
         roles_to_remove = [
             r for r in interaction.user.roles
@@ -690,14 +695,15 @@ class CityRoleButton(Button):
         ]
         if roles_to_remove:
             await interaction.user.remove_roles(*roles_to_remove)
+
         if role in interaction.user.roles:
             await interaction.user.remove_roles(role)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Removed **{self.role_name}** role.", ephemeral=True
             )
         else:
             await interaction.user.add_roles(role)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"You're now tagged as **{self.role_name}** ✅", ephemeral=True
             )
 
@@ -1536,6 +1542,7 @@ _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
 _RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
+_UNHINGED_CHANNELS = {"boises", "apnay-boises"}
 
 # Proactive dead-chat state
 _channel_objects: dict[int, discord.TextChannel] = {}
@@ -1583,6 +1590,23 @@ def _resolve_mentions(content: str, message: discord.Message) -> str:
         return "@someone"
 
     return re.sub(r"<@!?(\d+)>", _replace, content)
+
+
+def _strip_bot_self_mentions(content: str, bot_user: discord.ClientUser | None) -> str:
+    if not bot_user:
+        return content
+
+    import re
+
+    content = re.sub(rf"<@!?{bot_user.id}>", "", content)
+    bot_names = {
+        bot_user.name,
+        getattr(bot_user, "display_name", None),
+        str(bot_user).split("#", 1)[0],
+    }
+    for name in {n for n in bot_names if n}:
+        content = re.sub(rf"@{re.escape(name)}\b", "", content, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", content).strip()
 
 
 def _sanitize_ai_history_content(content: str) -> str:
@@ -1680,6 +1704,10 @@ def _is_too_similar_to_recent(candidate: str, recent: list[str]) -> bool:
     return False
 
 
+def _is_system_block_reply(reply: str) -> bool:
+    return reply.startswith(("gemini blocked this reply:", "local guard blocked this reply:"))
+
+
 def _typing_delay(reply: str) -> float:
     words = len(reply.split())
     if words <= 3:
@@ -1697,8 +1725,12 @@ async def maybe_send_ai_chat_reply(message):
 
     now = time.time()
     channel_id = message.channel.id
+    channel_name = message.channel.name if hasattr(message.channel, "name") else ""
     content_lower = message.content.lower() if message.content else ""
-    cleaned_content = _sanitize_ai_history_content(_resolve_mentions((message.content or "")[:200], message))
+    raw_content = (message.content or "")[:200]
+    cleaned_content = _sanitize_ai_history_content(
+        _resolve_mentions(_strip_bot_self_mentions(raw_content, bot.user), message)
+    )
 
     # Track recent messages for context
     if now - _channel_last_seen.get(channel_id, 0) > 900:
@@ -1746,7 +1778,7 @@ async def maybe_send_ai_chat_reply(message):
             if not e.animated
         }
         emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
-        mention_text = _resolve_mentions(cleaned_content.replace(f"<@{bot.user.id}>", ""), message).strip()
+        mention_text = cleaned_content.strip()
         # Inject bot's own recent replies so the model sees the full conversation
         bot_recent = [
             f"{bot.user.name}: {r}"
@@ -1754,18 +1786,33 @@ async def maybe_send_ai_chat_reply(message):
         ]
         full_mention_history = prior_history + bot_recent
 
-        reply = await fetch_ai_mention_reply(
-            mention_text or "(just pinged, no message)",
-            message.author.display_name,
-            emoji_names,
-            full_mention_history,
-            bot_name=bot.user.name,
-        )
+        recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
+        if channel_name in _UNHINGED_CHANNELS:
+            reply = await fetch_ai_unhinged_reply(
+                full_mention_history,
+                emoji_names,
+                mention_text or cleaned_content,
+                avoid_phrases=recent_replies_mention,
+            )
+        else:
+            reply = await fetch_ai_mention_reply(
+                mention_text or "(just pinged, no message)",
+                message.author.display_name,
+                emoji_names,
+                full_mention_history,
+                bot_name=bot.user.name,
+            )
         if reply and len(reply) > 2:
-            recent_replies_mention = list(_recent_bot_replies.get(channel_id, ()))
-            if _is_too_similar_to_recent(reply, recent_replies_mention):
+            is_block_reply = _is_system_block_reply(reply)
+            if not is_block_reply and _is_too_similar_to_recent(
+                reply, recent_replies_mention
+            ):
                 return
-            if not _has_custom_emoji_token(reply) and random.random() < 0.60:
+            if (
+                not is_block_reply
+                and not _has_custom_emoji_token(reply)
+                and random.random() < 0.60
+            ):
                 custom_emoji = _pick_ai_custom_emoji(
                     content_lower, reply, emoji_tokens_by_name
                 )
@@ -1911,41 +1958,51 @@ async def maybe_send_ai_chat_reply(message):
 
     recent_replies = list(_recent_bot_replies.get(channel_id, ()))
 
-    # Use persona reply if this user has a mature profile, fallback to generic
-    profile = _user_profiles.get(str(user_id))
-    has_persona = (
-        profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
-    )
-
-    if has_persona:
-        user_context = _build_user_context(profile)
-        reply = await fetch_ai_persona_reply(
+    if channel_name in _UNHINGED_CHANNELS:
+        reply = await fetch_ai_unhinged_reply(
             prior_history,
             emoji_names,
             cleaned_content,
-            user_context,
             avoid_phrases=recent_replies,
         )
-        if not reply or len(reply) <= 2:
+    else:
+        # Use persona reply if this user has a mature profile, fallback to generic
+        profile = _user_profiles.get(str(user_id))
+        has_persona = (
+            profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
+        )
+
+        if has_persona:
+            user_context = _build_user_context(profile)
+            reply = await fetch_ai_persona_reply(
+                prior_history,
+                emoji_names,
+                cleaned_content,
+                user_context,
+                avoid_phrases=recent_replies,
+            )
+            if not reply or len(reply) <= 2:
+                reply = await fetch_ai_chat_reply(
+                    prior_history,
+                    emoji_names,
+                    cleaned_content,
+                    avoid_phrases=recent_replies,
+                )
+        else:
             reply = await fetch_ai_chat_reply(
                 prior_history,
                 emoji_names,
                 cleaned_content,
                 avoid_phrases=recent_replies,
             )
-    else:
-        reply = await fetch_ai_chat_reply(
-            prior_history,
-            emoji_names,
-            cleaned_content,
-            avoid_phrases=recent_replies,
-        )
 
     if not reply or len(reply) <= 2:
         return
 
+    is_block_reply = _is_system_block_reply(reply)
+
     # Anti-repetition guard: drop near-duplicates of the bot's recent replies.
-    if _is_too_similar_to_recent(reply, recent_replies):
+    if not is_block_reply and _is_too_similar_to_recent(reply, recent_replies):
         logger.info(
             "AI reply suppressed as repetitive",
             extra={"channel_id": channel_id, "reply": reply[:60]},
@@ -1953,10 +2010,10 @@ async def maybe_send_ai_chat_reply(message):
         return
 
     # Random "think and say nothing" — feels human
-    if random.random() <= 0.20:
+    if not is_block_reply and random.random() <= 0.20:
         return
 
-    if not _has_custom_emoji_token(reply) and random.random() < 0.70:
+    if not is_block_reply and not _has_custom_emoji_token(reply) and random.random() < 0.70:
         custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
         if custom_emoji:
             reply = f"{reply.rstrip()} {custom_emoji}"
@@ -2334,6 +2391,10 @@ async def on_ready():
     print(f"✅ {bot.user} is online!")
     print("🤖 FULLY AUTOMATED BOT - Everything runs automatically!")
     print("📡 All features use unlimited APIs")
+
+    from api_helpers import _get_gemini_keys
+    gemini_keys = _get_gemini_keys()
+    print(f"🔑 Gemini API keys loaded: {len(gemini_keys)}")
 
     guild = bot.guilds[0]
 
