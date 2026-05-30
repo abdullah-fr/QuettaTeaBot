@@ -516,6 +516,68 @@ async def fetch_ai_persona_reply(
     ))
 
 
+# ==================== AI UNHINGED REPLY (boises channels only) ====================
+async def fetch_ai_unhinged_reply(
+    recent_messages: list[str],
+    server_emojis: list[str],
+    last_message: str,
+    *,
+    avoid_phrases: list[str] | None = None,
+) -> str | None:
+    """Savage, unfiltered CarryMinati-style reply for boises channels only."""
+    if not _get_gemini_keys():
+        return None
+
+    emoji_sample = random.sample(server_emojis, k=min(20, len(server_emojis))) if server_emojis else []
+    emoji_hint = ", ".join(emoji_sample) if emoji_sample else "none available"
+    trimmed_history = _trim_history_to_budget(recent_messages, _HISTORY_CHAR_BUDGET)
+    context_block = _build_context_block(trimmed_history)
+
+    avoid_block = ""
+    if avoid_phrases:
+        avoid_block = (
+            "\n\nDo NOT repeat these recent replies:\n- "
+            + "\n- ".join(avoid_phrases[-5:])
+        )
+
+    system_prompt = (
+        "You are in a Pakistani boys-only Discord channel. No filter. No politeness. Pure roast mode.\n\n"
+        "Your style is CarryMinati — savage, blunt, brutally honest, zero mercy.\n"
+        "You call people out directly. You roast their takes, their logic, their life choices.\n"
+        "You are not helpful. You are not kind. You are the guy who says what everyone is thinking.\n\n"
+        "STYLE:\n"
+        "- Roman Urdu + English mix, lowercase, aggressive\n"
+        "- 5-14 words. Direct hit, no padding.\n"
+        "- Savage, sarcastic, dismissive, or brutally honest\n"
+        "- Use Pakistani slang freely: yaar, bhai, bsdk, pagal, bewakoof, bakwaas, etc.\n"
+        "- Max 1 emoji, usually none\n\n"
+        "RULES:\n"
+        "- React to the specific message — make it personal and targeted\n"
+        "- Never be wholesome or supportive\n"
+        "- Never start with lol/haha/omg\n"
+        "- No asterisks, no roleplay narration\n"
+        "- If someone says something dumb, destroy them for it\n\n"
+        "TONE EXAMPLES:\n"
+        "dumb take → yaar ye soch ke hi teri aukaat pata chal gayi\n"
+        "flex → itna flex kar raha hai jaise kuch achieve kiya ho\n"
+        "excuse → bahana mat de, seedha bol ke nahi aata\n"
+        "cringe → ye padh ke mera dimaag kharab ho gaya\n"
+        "hot take → kis confidence se ye bakwaas bola usne\n\n"
+        f"Available server emojis: {emoji_hint}\n\n"
+        "Output only the reply. Nothing else." + avoid_block
+    )
+
+    return _validate_reply(await _gemini_request(
+        system=system_prompt,
+        user=(
+            f"Recent chat (context only):\n{context_block}\n\n"
+            f"Roast this message specifically: {last_message}"
+        ),
+        max_tokens=50,
+        temperature=1.0,
+    ), max_words=20)
+
+
 # ==================== AI CHAT REPLY ====================
 async def fetch_ai_chat_reply(
     recent_messages: list[str],

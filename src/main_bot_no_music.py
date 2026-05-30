@@ -40,6 +40,7 @@ from api_helpers import (
     fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
+    fetch_ai_unhinged_reply,
 )
 
 
@@ -1915,35 +1916,46 @@ async def maybe_send_ai_chat_reply(message):
 
     recent_replies = list(_recent_bot_replies.get(channel_id, ()))
 
-    # Use persona reply if this user has a mature profile, fallback to generic
-    profile = _user_profiles.get(str(user_id))
-    has_persona = (
-        profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
-    )
-
-    if has_persona:
-        user_context = _build_user_context(profile)
-        reply = await fetch_ai_persona_reply(
+    # Unhinged mode for boises channels
+    _UNHINGED_CHANNELS = {"boises", "apnay-boises"}
+    channel_name = message.channel.name if hasattr(message.channel, "name") else ""
+    if channel_name in _UNHINGED_CHANNELS:
+        reply = await fetch_ai_unhinged_reply(
             prior_history,
             emoji_names,
             cleaned_content,
-            user_context,
             avoid_phrases=recent_replies,
         )
-        if not reply or len(reply) <= 2:
+    # Use persona reply if this user has a mature profile, fallback to generic
+    else:
+        profile = _user_profiles.get(str(user_id))
+        has_persona = (
+            profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
+        )
+
+        if has_persona:
+            user_context = _build_user_context(profile)
+            reply = await fetch_ai_persona_reply(
+                prior_history,
+                emoji_names,
+                cleaned_content,
+                user_context,
+                avoid_phrases=recent_replies,
+            )
+            if not reply or len(reply) <= 2:
+                reply = await fetch_ai_chat_reply(
+                    prior_history,
+                    emoji_names,
+                    cleaned_content,
+                    avoid_phrases=recent_replies,
+                )
+        else:
             reply = await fetch_ai_chat_reply(
                 prior_history,
                 emoji_names,
                 cleaned_content,
                 avoid_phrases=recent_replies,
             )
-    else:
-        reply = await fetch_ai_chat_reply(
-            prior_history,
-            emoji_names,
-            cleaned_content,
-            avoid_phrases=recent_replies,
-        )
 
     if not reply or len(reply) <= 2:
         return
