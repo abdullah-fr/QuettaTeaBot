@@ -646,15 +646,15 @@ async def setuphobbies(interaction: discord.Interaction):
 
 # ==================== CITY ROLES ====================
 CITY_ROLES = {
-    "🔴 Karachite":     "Karachite",
-    "🟠 Lahori":        "Lahori",
-    "🟡 Faisalabadi":   "Faisalabadi",
-    "🟢 Peshawari":     "Peshawari",
-    "🔵 Multani":       "Multani",
-    "🟣 Islamabadi":    "Islamabadi",
-    "⚫ Quettaite":     "Quettaite",
-    "⚪ Other":         "Other",
-    "🌍 International": "International",
+    "🔴 Karachite":           "Karachite",
+    "🟠 Lahori":              "Lahori",
+    "🟡 Faisalabadi":         "Faisalabadi",
+    "🟢 Peshawari":           "Peshawari",
+    "🔵 Multani":             "Multani",
+    "🟣 Islamabadi/Pindi":    "Islamabadi/Pindi",
+    "⚫ Quettaite":           "Quettaite",
+    "⚪ Other":               "Other",
+    "🌍 International":       "International",
 }
 
 

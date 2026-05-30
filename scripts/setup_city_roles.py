@@ -24,15 +24,15 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 # City roles: display label → role name
 CITY_ROLES = {
-    "🔴 Karachite":       "Karachite",
-    "🟠 Lahori":          "Lahori",
-    "🟡 Faisalabadi":     "Faisalabadi",
-    "🟢 Peshawari":       "Peshawari",
-    "🔵 Multani":         "Multani",
-    "🟣 Islamabadi":      "Islamabadi",
-    "⚫ Quettaite":       "Quettaite",
-    "⚪ Other":           "Other",
-    "🌍 International":   "International",
+    "🔴 Karachite":           "Karachite",
+    "🟠 Lahori":              "Lahori",
+    "🟡 Faisalabadi":         "Faisalabadi",
+    "🟢 Peshawari":           "Peshawari",
+    "🔵 Multani":             "Multani",
+    "🟣 Islamabadi/Pindi":    "Islamabadi/Pindi",
+    "⚫ Quettaite":           "Quettaite",
+    "⚪ Other":               "Other",
+    "🌍 International":       "International",
 }
 
 
@@ -100,7 +100,13 @@ async def on_ready():
             continue
         print(f"📋 Setting up city roles in: {guild.name}")
 
-        # Create roles that don't exist yet
+        # Rename old "Islamabadi" role to "Islamabadi/Pindi" if it exists
+        old_role = discord.utils.get(guild.roles, name="Islamabadi")
+        if old_role:
+            await old_role.edit(name="Islamabadi/Pindi", reason="Renamed to include Rawalpindi/Pindi")
+            print("  ✅ Renamed 'Islamabadi' → 'Islamabadi/Pindi'")
+
+        # Create any roles that still don't exist
         existing_role_names = {r.name for r in guild.roles}
         for role_name in CITY_ROLES.values():
             if role_name not in existing_role_names:
