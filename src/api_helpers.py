@@ -388,9 +388,14 @@ async def _gemini_request(
                         )
                         return None
                     data = json.loads(text)
-                    return (
-                        data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    )
+                    candidates = data.get("candidates")
+                    if not candidates:
+                        logger.warning(
+                            "Gemini returned no candidates (likely safety filter)",
+                            extra={"body": text[:300]},
+                        )
+                        return None
+                    return candidates[0]["content"]["parts"][0]["text"].strip()
 
         try:
             result = await retry_async(

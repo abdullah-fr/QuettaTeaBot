@@ -676,9 +676,10 @@ class CityRoleButton(Button):
         self.role_name = role_name
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         role = discord.utils.get(interaction.guild.roles, name=self.role_name)
         if not role:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"⚠️ Role '{self.role_name}' not found!", ephemeral=True
             )
             return
@@ -694,12 +695,12 @@ class CityRoleButton(Button):
 
         if role in interaction.user.roles:
             await interaction.user.remove_roles(role)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Removed **{self.role_name}** role.", ephemeral=True
             )
         else:
             await interaction.user.add_roles(role)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"You're now tagged as **{self.role_name}** ✅", ephemeral=True
             )
 
