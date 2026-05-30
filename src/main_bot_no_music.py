@@ -549,6 +549,7 @@ async def on_voice_state_update(member, before, after):
     name="vctime", description="Check your voice chat time in this server"
 )
 async def vctime(interaction: discord.Interaction):
+    await interaction.response.defer()
     user_id = str(interaction.user.id)
     guild_id = str(interaction.guild.id)
     server_key = f"{user_id}_{guild_id}"
@@ -567,11 +568,11 @@ async def vctime(interaction: discord.Interaction):
     if total_minutes > 0:
         hours = int(total_minutes // 60)
         minutes = int(total_minutes % 60)
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"🎤 You've spent **{hours}h {minutes}m** in voice channels in **{interaction.guild.name}**!"
         )
     else:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "You haven't joined any voice channels in this server yet! Join a VC to start tracking your time."
         )
 
