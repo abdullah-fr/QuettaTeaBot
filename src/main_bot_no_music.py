@@ -644,6 +644,65 @@ async def setuphobbies(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=HobbyRoleView())
 
 
+# ==================== CITY ROLES ====================
+CITY_ROLES = {
+    "🔴 Karachite":     "Karachite",
+    "🟠 Lahori":        "Lahori",
+    "🟡 Faisalabadi":   "Faisalabadi",
+    "🟢 Peshawari":     "Peshawari",
+    "🔵 Multani":       "Multani",
+    "🟣 Islamabadi":    "Islamabadi",
+    "⚫ Quettaite":     "Quettaite",
+    "⚪ Other":         "Other",
+    "🌍 International": "International",
+}
+
+
+class CityRoleButton(Button):
+    def __init__(self, label: str, role_name: str):
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"city_role_{role_name}",
+        )
+        self.role_name = role_name
+
+    async def callback(self, interaction: discord.Interaction):
+        role = discord.utils.get(interaction.guild.roles, name=self.role_name)
+        if not role:
+            await interaction.response.send_message(
+                f"⚠️ Role '{self.role_name}' not found!", ephemeral=True
+            )
+            return
+
+        # Remove any other city roles the user has
+        city_role_names = list(CITY_ROLES.values())
+        roles_to_remove = [
+            r for r in interaction.user.roles
+            if r.name in city_role_names and r.name != self.role_name
+        ]
+        if roles_to_remove:
+            await interaction.user.remove_roles(*roles_to_remove)
+
+        if role in interaction.user.roles:
+            await interaction.user.remove_roles(role)
+            await interaction.response.send_message(
+                f"Removed **{self.role_name}** role.", ephemeral=True
+            )
+        else:
+            await interaction.user.add_roles(role)
+            await interaction.response.send_message(
+                f"You're now tagged as **{self.role_name}** ✅", ephemeral=True
+            )
+
+
+class CityRoleView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        for label, role_name in CITY_ROLES.items():
+            self.add_item(CityRoleButton(label=label, role_name=role_name))
+
+
 # ==================== PET SYSTEM ====================
 @bot.tree.command(name="adopt", description="Adopt a virtual pet")
 async def adopt(interaction: discord.Interaction):
@@ -2282,8 +2341,10 @@ async def on_ready():
     bot.add_view(ColorRoleView3())
     bot.add_view(NotificationView())
     bot.add_view(HobbyRoleView())
+    bot.add_view(CityRoleView())
     print("✅ Registered all color role buttons (37 colors)")
     print("✅ Registered notification buttons")
+    print("✅ Registered city role buttons")
 
     # Setup sticky intro message
     intro_channel = discord.utils.get(guild.text_channels, name="intro")
