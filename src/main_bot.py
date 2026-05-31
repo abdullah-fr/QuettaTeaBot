@@ -33,6 +33,7 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_comeback_reply,
     fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
@@ -1615,6 +1616,9 @@ async def maybe_send_ai_chat_reply(message):
     if message.author.bot or not message.guild:
         return
 
+    if getattr(message.channel, "name", None) == "girlies":
+        return
+
     now = time.time()
     channel_id = message.channel.id
     user_id = message.author.id
@@ -1674,6 +1678,50 @@ async def maybe_send_ai_chat_reply(message):
                 print(f"🤖 Mention reply in #{message.channel.name}: {reply[:60]}")
             except Exception:
                 logger.exception("AI mention reply failed")
+        return
+
+    # --- Reply to bot's message: savage comeback ---
+    ref = message.reference
+    if (
+        ref
+        and isinstance(ref.resolved, discord.Message)
+        and ref.resolved.author == bot.user
+        and message.content
+        and not _is_low_signal_ai_message(message.content)
+    ):
+        emoji_tokens_by_name = {
+            e.name.lower(): f"<:{e.name}:{e.id}>"
+            for e in message.guild.emojis
+            if not e.animated
+        }
+        emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
+        reply = await fetch_ai_comeback_reply(
+            ref.resolved.content[:200],
+            cleaned_content,
+            message.author.display_name,
+            emoji_names,
+        )
+        if reply and len(reply) > 2:
+            if not _has_custom_emoji_token(reply) and random.random() < 0.55:
+                custom_emoji = _pick_ai_custom_emoji(
+                    content_lower, reply, emoji_tokens_by_name
+                )
+                if custom_emoji:
+                    reply = f"{reply.rstrip()} {custom_emoji}"
+            try:
+                async with message.channel.typing():
+                    await asyncio.sleep(_typing_delay(reply))
+                await message.reply(reply, mention_author=True)
+                _channel_cooldowns[channel_id] = now
+                _user_cooldowns[user_id] = now
+                if channel_id not in _recent_bot_replies:
+                    _recent_bot_replies[channel_id] = deque(
+                        maxlen=_RECENT_REPLIES_PER_CHANNEL
+                    )
+                _recent_bot_replies[channel_id].append(reply)
+                print(f"🤖 Comeback in #{message.channel.name}: {reply[:60]}")
+            except Exception:
+                logger.exception("AI comeback reply failed")
         return
 
     # Non-mention path: apply channel/content guards
@@ -1995,6 +2043,9 @@ async def on_message(message):
 # ==================== TOLLPLAZA - JOIN/LEAVE LOGS ====================
 @bot.event
 async def on_member_join(member: discord.Member):
+    if member.bot:
+        return
+
     # Assign Unverified role on join
     unverified_role = discord.utils.get(member.guild.roles, name="Unverified")
     if unverified_role:
@@ -2253,11 +2304,6 @@ async def on_ready():
     try:
         synced = await bot.tree.sync()
         print(f"✅ Synced {len(synced)} slash commands")
-        # Also sync to guild for instant update
-        guild = discord.Object(id=bot.guilds[0].id)
-        bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
-        print("✅ Guild sync complete")
     except Exception:
         logger.exception("command sync failed")
 
