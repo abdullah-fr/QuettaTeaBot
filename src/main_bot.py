@@ -37,6 +37,7 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_comeback_reply,
     fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
@@ -1708,6 +1709,12 @@ def _is_system_block_reply(reply: str) -> bool:
     return reply.startswith(("gemini blocked this reply:", "local guard blocked this reply:"))
 
 
+def _fix_emoji_tokens(text: str) -> str:
+    """Remove spaces inside Discord custom emoji tokens that Gemini sometimes adds."""
+    import re
+    return re.sub(r"<\s*:([A-Za-z0-9_~]+)\s*:\s*(\d+)\s*>", r"<:\1:\2>", text)
+
+
 def _typing_delay(reply: str) -> float:
     words = len(reply.split())
     if words <= 3:
@@ -1819,6 +1826,7 @@ async def maybe_send_ai_chat_reply(message):
                 if custom_emoji:
                     reply = f"{reply.rstrip()} {custom_emoji}"
             try:
+                reply = _fix_emoji_tokens(reply)
                 async with message.channel.typing():
                     await asyncio.sleep(_typing_delay(reply))
                 await message.reply(reply, mention_author=True)
@@ -1830,6 +1838,45 @@ async def maybe_send_ai_chat_reply(message):
                 print(f"🤖 Mention reply in #{message.channel.name}: {reply[:60]}")
             except Exception:
                 logger.exception("AI mention reply failed")
+        return
+
+    # --- Reply to bot's message: savage comeback ---
+    ref = message.reference
+    if (
+        ref
+        and isinstance(ref.resolved, discord.Message)
+        and ref.resolved.author == bot.user
+        and message.content
+        and not _is_low_signal_ai_message(message.content)
+    ):
+        emoji_tokens_by_name = {
+            e.name.lower(): f"<:{e.name}:{e.id}>"
+            for e in message.guild.emojis
+            if not e.animated
+        }
+        emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
+        reply = await fetch_ai_comeback_reply(
+            ref.resolved.content[:200],
+            cleaned_content,
+            message.author.display_name,
+            emoji_names,
+        )
+        if reply and len(reply) > 2:
+            if not _has_custom_emoji_token(reply) and random.random() < 0.55:
+                custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
+                if custom_emoji:
+                    reply = f"{reply.rstrip()} {custom_emoji}"
+            try:
+                reply = _fix_emoji_tokens(reply)
+                async with message.channel.typing():
+                    await asyncio.sleep(_typing_delay(reply))
+                await message.reply(reply, mention_author=True)
+                if channel_id not in _recent_bot_replies:
+                    _recent_bot_replies[channel_id] = deque(maxlen=_RECENT_REPLIES_PER_CHANNEL)
+                _recent_bot_replies[channel_id].append(reply)
+                print(f"🤖 Comeback in #{message.channel.name}: {reply[:60]}")
+            except Exception:
+                logger.exception("AI comeback reply failed")
         return
 
     # Non-mention path: apply channel/content guards
@@ -2019,6 +2066,7 @@ async def maybe_send_ai_chat_reply(message):
             reply = f"{reply.rstrip()} {custom_emoji}"
 
     try:
+        reply = _fix_emoji_tokens(reply)
         async with message.channel.typing():
             await asyncio.sleep(_typing_delay(reply))
         await message.reply(reply, mention_author=False)
