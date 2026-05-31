@@ -558,6 +558,60 @@ async def fetch_ai_persona_reply(
     ))
 
 
+# ==================== AI COMEBACK REPLY ====================
+async def fetch_ai_comeback_reply(
+    bot_original: str,
+    their_reply: str,
+    sender_name: str,
+    server_emojis: list[str],
+) -> str | None:
+    """Generate a savage comeback when someone replies to the bot's message."""
+    if not _get_gemini_keys():
+        return None
+
+    emoji_sample = random.sample(server_emojis, k=min(20, len(server_emojis))) if server_emojis else []
+    emoji_hint = ", ".join(emoji_sample) if emoji_sample else "none available"
+
+    system_prompt = (
+        "You are a terminally online member of a Pakistani Discord server. "
+        "Someone just replied to something YOU said and you need to clap back.\n\n"
+        "YOUR JOB: one savage, witty comeback that directly references what they said. "
+        "Make them regret opening their mouth.\n\n"
+        "COMEBACK STYLE:\n"
+        "- must reference what they said specifically — not a generic diss\n"
+        "- dry wit > loud aggression\n"
+        "- confident and unbothered\n"
+        "- flip their words back on them if possible\n"
+        "- expose the irony or stupidity in what they said\n"
+        "- sometimes act like their reply was too embarrassing to even address\n\n"
+        "STYLE: Roman Urdu + English mix, lowercase, punchy\n"
+        "LENGTH: 4-12 words — sharp and quick\n"
+        "EMOJIS: max 1, only 💀 or 😭 if it lands perfectly, often none\n\n"
+        "NEVER: start with lol/haha/omg/bro, be wholesome, apologize, say 'as an ai'\n\n"
+        "COMEBACK EXAMPLES (style only):\n"
+        "- [they said you're wrong] -> the confidence with zero evidence is wild\n"
+        "- [they said 'shut up'] -> no i don't think i will 💀\n"
+        "- [weak comeback] -> that's your best? genuinely concerning\n"
+        "- [they got defensive] -> i said what i said\n\n"
+        f"Available server emojis: {emoji_hint}\n\n"
+        "Reply with ONLY the comeback text."
+    )
+
+    result = await _gemini_request(
+        system=system_prompt,
+        user=(
+            f"What YOU originally said: {bot_original}\n\n"
+            f"{sender_name} replied to you with: {their_reply}\n\n"
+            "Give them a savage comeback. Just the text, nothing else."
+        ),
+        max_tokens=45,
+        temperature=1.1,
+    )
+    if not result or len(result.strip()) < 2:
+        return None
+    return result.strip()
+
+
 # ==================== AI UNHINGED REPLY (boises channels only) ====================
 async def fetch_ai_unhinged_reply(
     recent_messages: list[str],
@@ -724,3 +778,25 @@ async def fetch_ai_mention_reply(
         max_tokens=70,
         temperature=0.80,
     ), max_words=25)
+
+
+# ==================== AUDIO UTILITIES ====================
+import io as _io
+import wave as _wave
+
+
+def _pcm_to_wav_bytes(
+    pcm: bytes,
+    *,
+    sample_rate: int = 48000,
+    channels: int = 2,
+    sample_width: int = 2,
+) -> bytes:
+    """Convert raw PCM bytes to WAV format."""
+    buf = _io.BytesIO()
+    with _wave.open(buf, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm)
+    return buf.getvalue()

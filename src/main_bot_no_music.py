@@ -37,11 +37,13 @@ from api_helpers import (
     fetch_roast,
     fetch_ai_summary,
     fetch_ai_chat_reply,
+    fetch_ai_comeback_reply,
     fetch_ai_mention_reply,
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
     fetch_ai_unhinged_reply,
 )
+from tts_player import setup_tts_commands
 
 
 # Configure structured logging
@@ -52,6 +54,9 @@ logger = get_logger(__name__)
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 logger.info("Bot initialized", extra={"command_prefix": "!"})
+
+# Register TTS commands (/speak, /converse, /stopconversing, /vcleave)
+setup_tts_commands(bot, include_vcleave=True)
 
 # Store sticky message ID
 sticky_message_id = None
@@ -1541,7 +1546,7 @@ _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
 _RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
-_UNHINGED_CHANNELS = {"boises", "apnay-boises"}
+_UNHINGED_CHANNELS = {"boises", "mirzapur"}
 
 # Proactive dead-chat state
 _channel_objects: dict[int, discord.TextChannel] = {}
@@ -1836,6 +1841,45 @@ async def maybe_send_ai_chat_reply(message):
                 print(f"🤖 Mention reply in #{message.channel.name}: {reply[:60]}")
             except Exception:
                 logger.exception("AI mention reply failed")
+        return
+
+    # --- Reply to bot's message: savage comeback ---
+    ref = message.reference
+    if (
+        ref
+        and isinstance(ref.resolved, discord.Message)
+        and ref.resolved.author == bot.user
+        and message.content
+        and not _is_low_signal_ai_message(message.content)
+    ):
+        emoji_tokens_by_name = {
+            e.name.lower(): f"<:{e.name}:{e.id}>"
+            for e in message.guild.emojis
+            if not e.animated
+        }
+        emoji_names = [token for _, token in sorted(emoji_tokens_by_name.items())][:75]
+        reply = await fetch_ai_comeback_reply(
+            ref.resolved.content[:200],
+            cleaned_content,
+            message.author.display_name,
+            emoji_names,
+        )
+        if reply and len(reply) > 2:
+            if not _has_custom_emoji_token(reply) and random.random() < 0.55:
+                custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
+                if custom_emoji:
+                    reply = f"{reply.rstrip()} {custom_emoji}"
+            try:
+                reply = _fix_emoji_tokens(reply)
+                async with message.channel.typing():
+                    await asyncio.sleep(_typing_delay(reply))
+                await message.reply(reply, mention_author=True)
+                if channel_id not in _recent_bot_replies:
+                    _recent_bot_replies[channel_id] = deque(maxlen=_RECENT_REPLIES_PER_CHANNEL)
+                _recent_bot_replies[channel_id].append(reply)
+                print(f"🤖 Comeback in #{message.channel.name}: {reply[:60]}")
+            except Exception:
+                logger.exception("AI comeback reply failed")
         return
 
     # Non-mention path: apply channel/content guards

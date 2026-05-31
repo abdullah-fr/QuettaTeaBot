@@ -1542,7 +1542,7 @@ _last_replied_users: dict[int, int] = {}
 _recent_bot_replies: dict[int, deque[str]] = {}
 _RECENT_REPLIES_PER_CHANNEL = 12
 AI_CHAT_CHANNEL_TYPES = (discord.TextChannel, discord.VoiceChannel, discord.Thread)
-_UNHINGED_CHANNELS = {"boises", "apnay-boises"}
+_UNHINGED_CHANNELS = {"boises", "mirzapur"}
 
 # Proactive dead-chat state
 _channel_objects: dict[int, discord.TextChannel] = {}
