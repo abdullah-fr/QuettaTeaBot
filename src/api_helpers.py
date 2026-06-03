@@ -523,6 +523,7 @@ async def fetch_ai_persona_reply(
     user_context: str,
     *,
     avoid_phrases: list[str] | None = None,
+    facts: list[str] | None = None,
 ) -> str | None:
     if not _get_gemini_keys():
         return None
@@ -536,15 +537,44 @@ async def fetch_ai_persona_reply(
         if avoid_phrases else ""
     )
 
+    facts_block = ""
+    if facts:
+        facts_block = (
+            "\nWHAT YOU KNOW ABOUT THEM (use at most one if it fits naturally):\n- "
+            + "\n- ".join(facts)
+            + "\n"
+        )
+
     system_prompt = (
-        "You are a member of a Pakistani Discord server who knows this person well.\n\n"
-        "ABOUT THIS PERSON:\n"
-        f"{user_context}\n\n"
-        "React to what they just said. Use what you know about them only if it fits naturally — never force it.\n\n"
-        "STYLE: Roman Urdu + English mix, lowercase, 6-12 words, casual and dry.\n"
-        "NEVER: be theatrical, start with lol/bro, explain your reply, use asterisks.\n"
-        f"Available server emojis: {emoji_hint}\n\n"
-        "Output only the reply, nothing else." + avoid_block
+        "You are a regular member of Quetta Tea Corner, a Pakistani/South Asian Discord server.\n"
+        "You are NOT an assistant. You are just another terminally online member who knows everyone.\n\n"
+        "ABOUT THE PERSON YOU ARE REPLYING TO:\n"
+        f"{user_context}\n"
+        f"{facts_block}\n"
+        "HOW TO REPLY:\n"
+        "- React to what they said RIGHT NOW — profile and facts are background, not a script\n"
+        "- If a fact connects naturally to the current message, weave it in — one fact max\n"
+        "- Be witty, dry, or observational — match their energy level\n"
+        "- Sound like you genuinely know this person from the server\n\n"
+        "LANGUAGE AND LENGTH:\n"
+        "- 6-14 words — a complete thought, not a one-word fragment\n"
+        "- Roman Urdu + English mix, lowercase, casual\n"
+        "- Max 1 emoji, only if it genuinely fits — often none is better\n"
+        "- Never start with 'lol', 'haha', 'bro', 'bhai'\n"
+        "- Never explain your reply, never use quotation marks\n\n"
+        "EXAMPLES — showing how facts shape the reply:\n"
+        "  fact: 'is a university student' | they said: 'neend nahi aayi raat bhar'\n"
+        "  → 'exams ki wajah se ho raha hai ye, pata hai'\n\n"
+        "  fact: 'likes biryani' | they said: 'khana khaoge?'\n"
+        "  → 'teri toh biryani hi hogi, aur kya'\n\n"
+        "  fact: 'stays up late' | they said: 'good morning'\n"
+        "  → 'good morning? raat bhar jaag ke ab morning bol raha hai'\n\n"
+        "  fact: 'plays PUBG' | they said: 'aaj kuch nahi kiya din bhar'\n"
+        "  → 'PUBG nahi khela toh kya kiya phir'\n\n"
+        "  no relevant fact | they said: 'yaar bahut bura din tha'\n"
+        "  → 'kya scene tha, bata'\n\n"
+        f"available server emojis: {emoji_hint}\n\n"
+        "Reply with ONLY the message itself." + avoid_block
     )
 
     return _validate_reply(await _gemini_request(
@@ -673,6 +703,40 @@ async def fetch_ai_unhinged_reply(
     if not result or len(result.strip()) < 2:
         return None
     return result.strip()
+
+
+async def extract_user_facts(recent_quotes: list[str]) -> list[str]:
+    """Extract concrete facts about a user from their recent messages via Gemini."""
+    if not _get_gemini_keys() or not recent_quotes:
+        return []
+
+    quotes_block = "\n".join(f"- {q}" for q in recent_quotes[-10:])
+
+    raw = await _gemini_request(
+        system=(
+            "Extract 3-5 concrete facts about this Discord user from their messages.\n"
+            "Rules:\n"
+            "- Return ONLY a valid JSON array of strings. No markdown, no explanation.\n"
+            "- Each fact: under 10 words, specific, third-person.\n"
+            "- Only include facts clearly supported by the messages.\n"
+            "- Skip vague or generic observations.\n"
+            'Example output: ["is a university student", "likes biryani", "stays up late at night"]'
+        ),
+        user=f"User messages:\n{quotes_block}\n\nJSON array:",
+        max_tokens=120,
+        temperature=0.2,
+    )
+
+    if not raw:
+        return []
+    try:
+        cleaned = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, list):
+            return [str(f) for f in parsed if isinstance(f, str) and 3 < len(f) < 80][:5]
+    except Exception:
+        pass
+    return []
 
 
 # ==================== AI CHAT REPLY ====================

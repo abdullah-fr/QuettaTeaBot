@@ -42,6 +42,7 @@ from api_helpers import (
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
     fetch_ai_unhinged_reply,
+    extract_user_facts,
 )
 from music_player import setup_music_commands
 
@@ -1407,7 +1408,7 @@ def _extract_ngrams(tokens: list[str], n: int) -> list[str]:
 
 
 def _build_user_context(profile: dict) -> str:
-    parts = [f"name: {profile['display_name']}"]
+    parts = [f"name: {profile.get('username', profile['display_name'])}"]
 
     phrases = profile.get("signature_phrases", [])
     if phrases:
@@ -1441,6 +1442,21 @@ def _build_user_context(profile: dict) -> str:
     return " | ".join(parts)
 
 
+def _retrieve_relevant_facts(profile: dict, current_message: str) -> list[str]:
+    """Score stored facts by keyword overlap with the current message, return top 3."""
+    facts = profile.get("facts", [])
+    if not facts:
+        return []
+    msg_words = set(_re.sub(r"[^\w\s]", " ", current_message.lower()).split())
+    scored = []
+    for f in facts:
+        fact_words = set(f["text"].lower().split())
+        overlap = len(fact_words & msg_words)
+        scored.append((overlap, f.get("ts", 0), f["text"]))
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [text for _, _, text in scored[:3]]
+
+
 async def _update_user_profile(message: discord.Message) -> None:
     """Passively build per-user chat profile from every message. Saves every 70 messages."""
     user_id = str(message.author.id)
@@ -1450,12 +1466,14 @@ async def _update_user_profile(message: discord.Message) -> None:
     profile = _user_profiles.setdefault(
         user_id,
         {
+            "username": message.author.name,
             "display_name": message.author.display_name,
             "message_count": 0,
             "word_freq": {},
             "ngram_freq": {},
             "signature_phrases": [],
             "recent_quotes": [],
+            "facts": [],  # list of {"text": str, "ts": float}
             "avg_length": 0.0,
             "urdu_ratio": 0.0,
             "funny_ratio": 0.0,
@@ -1465,6 +1483,7 @@ async def _update_user_profile(message: discord.Message) -> None:
         },
     )
 
+    profile["username"] = message.author.name
     profile["display_name"] = message.author.display_name
     profile["message_count"] += 1
     n = profile["message_count"]
@@ -1531,6 +1550,21 @@ async def _update_user_profile(message: discord.Message) -> None:
             )
             if count >= _NGRAM_SIGNATURE_THRESHOLD
         ][:10]
+
+        # Extract new facts from recent quotes via Groq and merge into profile
+        new_fact_texts = await extract_user_facts(profile.get("recent_quotes", []))
+        if new_fact_texts:
+            import time as _time
+
+            existing = {f["text"] for f in profile.get("facts", [])}
+            now_ts = _time.time()
+            fresh = [
+                {"text": t, "ts": now_ts}
+                for t in new_fact_texts
+                if t not in existing
+            ]
+            profile["facts"] = (profile.get("facts", []) + fresh)[-30:]
+
         _profile_dirty_counts[user_id] = 0
         await _user_profiles_store.save(_user_profiles)
 
@@ -2013,13 +2047,13 @@ async def maybe_send_ai_chat_reply(message):
             avoid_phrases=recent_replies,
         )
     else:
-        # Use persona reply if this user has a mature profile, fallback to generic
         profile = _user_profiles.get(str(user_id))
         has_persona = (
             profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
         )
 
         if has_persona:
+            relevant_facts = _retrieve_relevant_facts(profile, message.content or "")
             user_context = _build_user_context(profile)
             reply = await fetch_ai_persona_reply(
                 prior_history,
@@ -2027,6 +2061,7 @@ async def maybe_send_ai_chat_reply(message):
                 cleaned_content,
                 user_context,
                 avoid_phrases=recent_replies,
+                facts=relevant_facts,
             )
             if not reply or len(reply) <= 2:
                 reply = await fetch_ai_chat_reply(
