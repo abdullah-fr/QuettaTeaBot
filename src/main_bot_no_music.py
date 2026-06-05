@@ -1410,7 +1410,7 @@ def _extract_ngrams(tokens: list[str], n: int) -> list[str]:
 
 
 def _build_user_context(profile: dict) -> str:
-    parts = [f"name: {profile['display_name']}"]
+    parts = [f"name: {profile.get('username', profile['display_name'])}"]
 
     phrases = profile.get("signature_phrases", [])
     if phrases:
@@ -1453,6 +1453,7 @@ async def _update_user_profile(message: discord.Message) -> None:
     profile = _user_profiles.setdefault(
         user_id,
         {
+            "username": message.author.name,
             "display_name": message.author.display_name,
             "message_count": 0,
             "word_freq": {},
@@ -1468,6 +1469,7 @@ async def _update_user_profile(message: discord.Message) -> None:
         },
     )
 
+    profile["username"] = message.author.name
     profile["display_name"] = message.author.display_name
     profile["message_count"] += 1
     n = profile["message_count"]
