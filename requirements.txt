@@ -1,6 +1,6 @@
 discord.py==2.7.1
 dave.py>=0.1.2
-davey>=0.1.0
+davey>=0.1.5
 discord-ext-voice-recv>=0.5.0
 audioop-lts>=0.2.1
 python-dotenv>=1.2.2
