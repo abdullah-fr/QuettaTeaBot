@@ -2274,6 +2274,7 @@ async def on_member_join(member: discord.Member):
         # Compare invite uses before and after
         invites_after = await member.guild.invites()
         cached = getattr(bot, "_invite_cache", {}).get(member.guild.id, [])
+        matched = False
         for invite in invites_after:
             for cached_invite in cached:
                 if (
@@ -2284,7 +2285,24 @@ async def on_member_join(member: discord.Member):
                         inviter = "Discadia"
                     else:
                         inviter = invite.inviter.mention if invite.inviter else "Unknown"
+                    matched = True
                     break
+            if matched:
+                break
+
+        # If no invite matched, check if the Discadia invite use count went up
+        # by comparing directly (Discadia link may not appear in guild.invites())
+        if not matched:
+            for invite in invites_after:
+                if invite.code == _DISCADIA_INVITE_CODE:
+                    for cached_invite in cached:
+                        if cached_invite.code == _DISCADIA_INVITE_CODE:
+                            if invite.uses > cached_invite.uses:
+                                inviter = "Discadia"
+                    break
+        # If still unknown — likely came from an external listing (Discadia)
+        if inviter == "Unknown":
+            inviter = "Discadia (or unknown link)"
     except Exception:
         pass
 
