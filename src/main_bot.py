@@ -1,33 +1,6 @@
-import sys
-import os
-sys.path.insert(0, os.path.dirname(__file__))
-
-import discord
-from discord import app_commands
-from discord.ext import commands, tasks
-from discord.ui import View, Button
-import random
-from datetime import datetime, timezone
-import asyncio
-
-try:
-    from config import settings
-    from data_store import JsonDataStore
-    from logging_config import configure_logging, get_logger
-except ImportError:
-    from .config import settings
-    from .data_store import JsonDataStore
-    from .logging_config import configure_logging, get_logger
-
-# Import our modules
-from question_bank import (
-    COMPLIMENTS,
-    PETS,
-    QOTD_QUESTIONS,
-    ROASTS,
-    URDU_POETRY,
-    WYR_QUESTIONS,
-)
+from collections import deque
+import re as _re
+from tts_player import setup_tts_commands
 from api_helpers import (
     fetch_trivia_question,
     fetch_riddle,
@@ -42,8 +15,38 @@ from api_helpers import (
     fetch_ai_persona_reply,
     fetch_ai_dead_chat_starter,
     fetch_ai_unhinged_reply,
+    extract_user_facts,
 )
-from tts_player import setup_tts_commands
+from question_bank import (
+    COMPLIMENTS,
+    PETS,
+    QOTD_QUESTIONS,
+    ROASTS,
+    URDU_POETRY,
+    WYR_QUESTIONS,
+)
+import asyncio
+from datetime import datetime, timezone
+import random
+from discord.ui import View, Button
+from discord.ext import commands, tasks
+from discord import app_commands
+import discord
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
+
+try:
+    from config import settings
+    from data_store import JsonDataStore
+    from logging_config import configure_logging, get_logger
+except ImportError:
+    from .config import settings
+    from .data_store import JsonDataStore
+    from .logging_config import configure_logging, get_logger
+
+# Import our modules
 
 
 # Configure structured logging
@@ -60,6 +63,43 @@ setup_tts_commands(bot, include_vcleave=True)
 
 # Store sticky message ID
 sticky_message_id = None
+
+# Maps new member id -> the bot's welcome ping message id in #intro, so the
+# ping can be removed once they actually post their introduction. In-memory
+# only; a history scan acts as a fallback after restarts.
+_welcome_messages: dict[int, int] = {}
+
+
+def _build_sticky_intro_embed() -> discord.Embed:
+    embed = discord.Embed(
+        title="👋 Welcome to Quetta Tea Corner!",
+        description=(
+            "Before you can access the server, please introduce yourself here!\n\n"
+            "**Tell us about:**\n• Name/nickname:\n• Age:\n• Gender:\n"
+            "• Country/city:\n• Interests/hobbies:\n\n"
+            "Once a moderator reviews your intro, you'll get the Verified role "
+            "and full access to the server! ☕"
+        ),
+        color=discord.Color.from_rgb(139, 69, 19),
+    )
+    embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
+    return embed
+
+
+async def _repost_sticky_intro(channel: discord.TextChannel) -> None:
+    """Delete the old sticky intro embed and re-post it at the bottom."""
+    global sticky_message_id
+    try:
+        if sticky_message_id:
+            try:
+                old = await channel.fetch_message(sticky_message_id)
+                await old.delete()
+            except Exception:
+                pass
+        new_sticky = await channel.send(embed=_build_sticky_intro_embed())
+        sticky_message_id = new_sticky.id
+    except Exception:
+        pass
 
 # Data storage (async-safe; serializes writes, atomic on-disk swap)
 data_store = JsonDataStore(settings.bot_data_file)
@@ -162,6 +202,33 @@ class ColorRoleView3(View):
         super().__init__(timeout=None)
         for name in list(COLOR_ROLES.keys())[50:]:
             self.add_item(ColorRoleButton(name))
+
+
+WELCOME_EMOJI_NAME = "yayyyyy"
+
+
+def _named_emoji(guild: discord.Guild, name: str) -> str:
+    """Return the custom server emoji token for `name`, or '' if it doesn't exist."""
+    emoji = discord.utils.get(guild.emojis, name=name)
+    return str(emoji) if emoji else ""
+
+
+def _build_welcome_message(member: discord.Member, guild: discord.Guild) -> str:
+    """Welcome line pointing new members to both the self-roles and color-roles
+    channels, decorated with the server's :yayyyyy: custom emoji."""
+    self_roles = discord.utils.get(guild.text_channels, name="self-roles")
+    color_roles = discord.utils.get(guild.text_channels, name="color-roles")
+    self_part = self_roles.mention if self_roles else "#self-roles"
+    color_part = color_roles.mention if color_roles else "#color-roles"
+
+    yay = _named_emoji(guild, WELCOME_EMOJI_NAME)
+    lead = f"{yay} " if yay else ""
+    trail = f" {yay}" if yay else ""
+
+    return (
+        f"{lead}Welcome {member.mention} to {guild.name}!{trail}\n"
+        f"Hop over to {self_part} to grab your roles, and pick a name color in {color_part}!"
+    )
 
 
 class NotificationView(View):
@@ -713,10 +780,122 @@ class CityRoleButton(Button):
 
 
 class CityRoleView(View):
-    def __init__(self):
+    def __init__(self, guild: discord.Guild | None = None):
         super().__init__(timeout=None)
+        # When a guild is given, only show buttons for city roles that still
+        # exist, so the panel stays in sync with the actual server roles.
+        existing = {r.name for r in guild.roles} if guild is not None else None
         for label, role_name in CITY_ROLES.items():
+            if existing is not None and role_name not in existing:
+                continue
             self.add_item(CityRoleButton(label=label, role_name=role_name))
+
+
+@bot.tree.command(
+    name="setupcityroles",
+    description="Re-post the city roles panel in #self-roles, synced to existing roles (Admin only)",
+)
+@app_commands.checks.has_permissions(administrator=True)
+async def setupcityroles(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    channel = discord.utils.get(
+        interaction.guild.text_channels, name="self-roles"
+    )
+    if not channel:
+        await interaction.followup.send(
+            "❌ #self-roles channel not found.", ephemeral=True
+        )
+        return
+
+    # Remove the bot's old City Roles message(s) so only the fresh one remains.
+    removed = 0
+    try:
+        async for msg in channel.history(limit=100):
+            if (
+                msg.author == bot.user
+                and msg.embeds
+                and "City Roles" in (msg.embeds[0].title or "")
+            ):
+                await msg.delete()
+                removed += 1
+    except Exception:
+        pass
+
+    embed = discord.Embed(
+        title="🏙️ City Roles",
+        description="Select the city you're from! Click again to remove.",
+        color=discord.Color.blurple(),
+    )
+    view = CityRoleView(interaction.guild)
+    await channel.send(embed=embed, view=view)
+    # Keep the persistent view registration in sync with the posted buttons.
+    bot.add_view(CityRoleView(interaction.guild))
+
+    await interaction.followup.send(
+        f"✅ City roles panel updated with {len(view.children)} cities "
+        f"(removed {removed} old message(s)).",
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(
+    name="setupcolorroles",
+    description="Post the color roles panel in #color-roles (Admin only)",
+)
+@app_commands.checks.has_permissions(administrator=True)
+async def setupcolorroles(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    channel = discord.utils.get(
+        interaction.guild.text_channels, name="color-roles"
+    )
+    if not channel:
+        await interaction.followup.send(
+            "❌ #color-roles channel not found.", ephemeral=True
+        )
+        return
+
+    # Remove the bot's old color role messages so only the fresh ones remain.
+    removed = 0
+    try:
+        async for msg in channel.history(limit=100):
+            if (
+                msg.author == bot.user
+                and msg.embeds
+                and "Color Roles" in (msg.embeds[0].title or "")
+            ):
+                await msg.delete()
+                removed += 1
+    except Exception:
+        pass
+
+    total = len(COLOR_ROLES)
+    embed1 = discord.Embed(
+        title="🎨 Color Roles (1-25)",
+        description=f"Click a button below to get a color role! ({total} colors available)",
+        color=discord.Color.blurple(),
+    )
+    await channel.send(embed=embed1, view=ColorRoleView())
+
+    if total > 25:
+        embed2 = discord.Embed(
+            title=f"🎨 Color Roles (26-{total})",
+            description="More color options!",
+            color=discord.Color.blurple(),
+        )
+        await channel.send(embed=embed2, view=ColorRoleView2())
+
+    if total > 50:
+        embed3 = discord.Embed(
+            title=f"🎨 Color Roles (51-{total})",
+            description="Even more colors!",
+            color=discord.Color.blurple(),
+        )
+        await channel.send(embed=embed3, view=ColorRoleView3())
+
+    await interaction.followup.send(
+        f"✅ Color roles panel posted in {channel.mention} (removed {removed} old).",
+        ephemeral=True,
+    )
 
 
 # ==================== PET SYSTEM ====================
@@ -948,7 +1127,7 @@ async def purge(
 
             # Bulk delete in batches of 100
             for i in range(0, len(to_delete), 100):
-                batch = to_delete[i : i + 100]
+                batch = to_delete[i: i + 100]
                 try:
                     await interaction.channel.delete_messages(batch)
                 except Exception:
@@ -1037,22 +1216,9 @@ async def welcome(interaction: discord.Interaction, member: discord.Member):
         return
 
     general_channel = discord.utils.get(interaction.guild.text_channels, name="general")
-    self_roles_channel = discord.utils.get(
-        interaction.guild.text_channels, name="self-roles"
-    )
 
     if general_channel:
-        if self_roles_channel:
-            welcome_message = (
-                f"🎉 Welcome {member.mention} to {interaction.guild.name}! 🎉\n"
-                f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
-            )
-        else:
-            welcome_message = (
-                f"🎉 Welcome {member.mention} to {interaction.guild.name}! 🎉\n"
-                f"Hop over to #self-roles to grab your roles and join the fun!"
-            )
-
+        welcome_message = _build_welcome_message(member, interaction.guild)
         await general_channel.send(welcome_message)
         await interaction.response.send_message(
             f"✅ Welcome message sent for {member.mention}!"
@@ -1186,17 +1352,7 @@ async def on_member_update(before, after):
         print(f"🔎 Self-roles channel: {self_roles_channel}")
 
         if general_channel:
-            if self_roles_channel:
-                welcome_message = (
-                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
-                    f"Hop over to {self_roles_channel.mention} to grab your roles and join the fun!"
-                )
-            else:
-                welcome_message = (
-                    f"🎉 Welcome {after.mention} to {after.guild.name}! 🎉\n"
-                    f"Hop over to #self-roles to grab your roles and join the fun!"
-                )
-
+            welcome_message = _build_welcome_message(after, after.guild)
             await general_channel.send(welcome_message)
             print(f"✅ Sent welcome message for {after.name} in general")
         else:
@@ -1241,8 +1397,6 @@ async def on_message_delete(message):
 
 
 # ==================== USER PROFILE SYSTEM ====================
-import re as _re
-from collections import deque
 
 _PROFILE_SAVE_INTERVAL = 70  # flush to disk every N messages per user
 _PROFILE_MIN_MESSAGES = 50  # minimum before persona reply activates
@@ -1406,7 +1560,7 @@ def _tokenize_for_profile(content: str) -> list[str]:
 
 
 def _extract_ngrams(tokens: list[str], n: int) -> list[str]:
-    return [" ".join(tokens[i : i + n]) for i in range(len(tokens) - n + 1)]
+    return [" ".join(tokens[i: i + n]) for i in range(len(tokens) - n + 1)]
 
 
 def _build_user_context(profile: dict) -> str:
@@ -1444,6 +1598,21 @@ def _build_user_context(profile: dict) -> str:
     return " | ".join(parts)
 
 
+def _retrieve_relevant_facts(profile: dict, current_message: str) -> list[str]:
+    """Score stored facts by keyword overlap with the current message, return top 3."""
+    facts = profile.get("facts", [])
+    if not facts:
+        return []
+    msg_words = set(_re.sub(r"[^\w\s]", " ", current_message.lower()).split())
+    scored = []
+    for f in facts:
+        fact_words = set(f["text"].lower().split())
+        overlap = len(fact_words & msg_words)
+        scored.append((overlap, f.get("ts", 0), f["text"]))
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [text for _, _, text in scored[:3]]
+
+
 async def _update_user_profile(message: discord.Message) -> None:
     """Passively build per-user chat profile from every message. Saves every 70 messages."""
     user_id = str(message.author.id)
@@ -1460,6 +1629,7 @@ async def _update_user_profile(message: discord.Message) -> None:
             "ngram_freq": {},
             "signature_phrases": [],
             "recent_quotes": [],
+            "facts": [],  # list of {"text": str, "ts": float}
             "avg_length": 0.0,
             "urdu_ratio": 0.0,
             "funny_ratio": 0.0,
@@ -1536,6 +1706,21 @@ async def _update_user_profile(message: discord.Message) -> None:
             )
             if count >= _NGRAM_SIGNATURE_THRESHOLD
         ][:10]
+
+        # Extract new facts from recent quotes via Groq and merge into profile
+        new_fact_texts = await extract_user_facts(profile.get("recent_quotes", []))
+        if new_fact_texts:
+            import time as _time
+
+            existing = {f["text"] for f in profile.get("facts", [])}
+            now_ts = _time.time()
+            fresh = [
+                {"text": t, "ts": now_ts}
+                for t in new_fact_texts
+                if t not in existing
+            ]
+            profile["facts"] = (profile.get("facts", []) + fresh)[-30:]
+
         _profile_dirty_counts[user_id] = 0
         await _user_profiles_store.save(_user_profiles)
 
@@ -1555,7 +1740,10 @@ _channel_objects: dict[int, discord.TextChannel] = {}
 _proactive_last_fired: dict[int, float] = {}
 _PROACTIVE_QUIET_MIN = 1800  # channel must be quiet for at least 30 min
 _PROACTIVE_QUIET_MAX = 7200  # but not more than 2 hrs (then it's just dead)
-_PROACTIVE_ALLOWED_CHANNELS = {"general", "General", "boises", "bot-tunning"}
+_PROACTIVE_ALLOWED_CHANNELS = {"general", "General"}
+# Channels where the bot is allowed to jump into conversations on its own
+# (random/auto replies). Everywhere else it only speaks when @mentioned.
+_AI_AUTO_REPLY_CHANNELS = {"general", "General"}
 _PROACTIVE_COOLDOWN = 10800  # 3 hrs minimum between proactive fires per channel
 LOW_SIGNAL_AI_MESSAGES = {
     "bot",
@@ -1715,9 +1903,25 @@ def _is_system_block_reply(reply: str) -> bool:
 
 
 def _fix_emoji_tokens(text: str) -> str:
-    """Remove spaces inside Discord custom emoji tokens that Gemini sometimes adds."""
+    """Repair malformed Discord custom emoji tokens the model produces:
+    - stray spaces inside the token  ("< : name : id >")
+    - a missing closing ">" (often from max_tokens truncating right at the >)
+    - dangling/truncated fragments left at the very end ("<:name:14620")
+    """
     import re
-    return re.sub(r"<\s*:([A-Za-z0-9_~]+)\s*:\s*(\d+)\s*>", r"<:\1:\2>", text)
+
+    # 1) Collapse stray spaces inside otherwise-complete tokens.
+    text = re.sub(
+        r"<\s*(a?):\s*([A-Za-z0-9_~]+)\s*:\s*(\d+)\s*>", r"<\1:\2:\3>", text
+    )
+    # 2) Add the missing ">" when the id looks complete (emoji IDs are 17+ digits).
+    text = re.sub(
+        r"<(a?):([A-Za-z0-9_~]+):(\d{17,})(?![\d>])", r"<\1:\2:\3>", text
+    )
+    # 3) Strip a dangling/truncated emoji fragment at the end of the message
+    #    (partial id < 17 digits, or no id at all) — it can't render anyway.
+    text = re.sub(r"<a?:[A-Za-z0-9_~]*(?::\d{0,16})?\s*$", "", text)
+    return text.rstrip()
 
 
 def _typing_delay(reply: str) -> float:
@@ -1868,7 +2072,8 @@ async def maybe_send_ai_chat_reply(message):
         )
         if reply and len(reply) > 2:
             if not _has_custom_emoji_token(reply) and random.random() < 0.55:
-                custom_emoji = _pick_ai_custom_emoji(content_lower, reply, emoji_tokens_by_name)
+                custom_emoji = _pick_ai_custom_emoji(
+                    content_lower, reply, emoji_tokens_by_name)
                 if custom_emoji:
                     reply = f"{reply.rstrip()} {custom_emoji}"
             try:
@@ -1877,7 +2082,8 @@ async def maybe_send_ai_chat_reply(message):
                     await asyncio.sleep(_typing_delay(reply))
                 await message.reply(reply, mention_author=True)
                 if channel_id not in _recent_bot_replies:
-                    _recent_bot_replies[channel_id] = deque(maxlen=_RECENT_REPLIES_PER_CHANNEL)
+                    _recent_bot_replies[channel_id] = deque(
+                        maxlen=_RECENT_REPLIES_PER_CHANNEL)
                 _recent_bot_replies[channel_id].append(reply)
                 print(f"🤖 Comeback in #{message.channel.name}: {reply[:60]}")
             except Exception:
@@ -1899,6 +2105,11 @@ async def maybe_send_ai_chat_reply(message):
         f"{message.author.display_name}: {cleaned_content}"
     )
     _channel_history[channel_id] = _channel_history[channel_id][-15:]
+
+    # Auto (non-mention) replies only fire in #general. History above is still
+    # tracked everywhere so @mentions in other channels keep their context.
+    if channel_name not in _AI_AUTO_REPLY_CHANNELS:
+        return
 
     if _is_low_signal_ai_message(message.content):
         return
@@ -2021,10 +2232,12 @@ async def maybe_send_ai_chat_reply(message):
         # Use persona reply if this user has a mature profile, fallback to generic
         profile = _user_profiles.get(str(user_id))
         has_persona = (
-            profile is not None and profile.get("message_count", 0) >= _PROFILE_MIN_MESSAGES
+            profile is not None and profile.get(
+                "message_count", 0) >= _PROFILE_MIN_MESSAGES
         )
 
         if has_persona:
+            relevant_facts = _retrieve_relevant_facts(profile, message.content or "")
             user_context = _build_user_context(profile)
             reply = await fetch_ai_persona_reply(
                 prior_history,
@@ -2032,6 +2245,7 @@ async def maybe_send_ai_chat_reply(message):
                 cleaned_content,
                 user_context,
                 avoid_phrases=recent_replies,
+                facts=relevant_facts,
             )
             if not reply or len(reply) <= 2:
                 reply = await fetch_ai_chat_reply(
@@ -2155,19 +2369,23 @@ async def on_message(message):
         except Exception:
             pass
 
-    # ==================== ART-N-CLICKS: IMAGE ONLY + AUTO THREAD ====================
-    # Delete non-image messages, auto-create thread on images for comments
+    # ==================== ART-N-CLICKS: IMAGE/VIDEO ONLY + AUTO THREAD ====================
+    # Delete messages with no image/video, auto-create thread on media for comments
     if message.channel.name == "art-n-clicks" and not message.author.bot:
-        has_image = any(
-            a.content_type and a.content_type.startswith("image/")
+        has_media = any(
+            a.content_type
+            and (
+                a.content_type.startswith("image/")
+                or a.content_type.startswith("video/")
+            )
             for a in message.attachments
         )
-        if not has_image:
+        if not has_media:
             try:
                 await message.delete()
                 await message.channel.send(
-                    f"{message.author.mention} ❌ Only images are allowed in **#art-n-clicks**.\n"
-                    "• Post your photos, art, or screenshots here\n"
+                    f"{message.author.mention} ❌ Only images and videos are allowed in **#art-n-clicks**.\n"
+                    "• Post your photos, art, screenshots, or clips here\n"
                     "• A discussion thread will be created automatically\n"
                     "• Text and voice messages are not allowed",
                     delete_after=8,
@@ -2176,7 +2394,7 @@ async def on_message(message):
                 pass
             return
 
-        # Image posted — create a thread for comments
+        # Image/video posted — create a thread for comments
         try:
             thread_name = f"🎨 {message.author.display_name}'s post"
             await message.create_thread(
@@ -2190,11 +2408,32 @@ async def on_message(message):
     # When an unverified member posts their intro, auto-create a thread
     # so verified members can welcome and discuss without cluttering the channel
     if message.channel.name == "intro":
+        # Member has introduced themselves — remove the bot's welcome ping.
+        welcome_id = _welcome_messages.pop(message.author.id, None)
+        deleted_welcome = False
+        if welcome_id:
+            try:
+                wm = await message.channel.fetch_message(welcome_id)
+                await wm.delete()
+                deleted_welcome = True
+            except Exception:
+                pass
+        if not deleted_welcome:
+            # Fallback (e.g. after a restart, when the map is empty): find the
+            # bot's welcome ping that mentions this user and delete it.
+            try:
+                async for old in message.channel.history(limit=30):
+                    if (
+                        old.author == bot.user
+                        and old.id != sticky_message_id
+                        and message.author in old.mentions
+                    ):
+                        await old.delete()
+                        break
+            except Exception:
+                pass
+
         try:
-            # Use first 50 chars of intro as thread name
-            preview = message.content[:50].strip()
-            if len(message.content) > 50:
-                preview += "..."
             thread_name = f"👋 {message.author.display_name}'s intro"
             await message.create_thread(
                 name=thread_name,
@@ -2205,25 +2444,7 @@ async def on_message(message):
 
     # Sticky intro message
     if message.channel.name == "intro" and sticky_message_id:
-        try:
-            sticky_msg = await message.channel.fetch_message(sticky_message_id)
-            await sticky_msg.delete()
-            embed = discord.Embed(
-                title="👋 Welcome to Quetta Tea Corner!",
-                description=(
-                    "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Name/nickname:\n• Age:\n• Gender:\n"
-                    "• Country/city:\n• Interests/hobbies:\n\n"
-                    "Once a moderator reviews your intro, you'll get the Verified role "
-                    "and full access to the server! ☕"
-                ),
-                color=discord.Color.from_rgb(139, 69, 19),
-            )
-            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
-            new_sticky = await message.channel.send(embed=embed)
-            sticky_message_id = new_sticky.id
-        except Exception:
-            pass
+        await _repost_sticky_intro(message.channel)
 
     # Check trivia answers
     await on_message_trivia_answer(message)
@@ -2262,49 +2483,39 @@ async def on_member_join(member: discord.Member):
     if not channel:
         return
 
-    # Try to find who invited this member via audit log
+    # Try to find who invited this member by diffing invite use counts
     inviter = "Unknown"
     _DISCADIA_INVITE_CODE = "KvKhG2t47S"
+    # Server-listing services create their own invite; the inviter resolves to
+    # their bot account, so map those bot IDs to a clean label instead of a
+    # raw <@id> mention.
+    _KNOWN_INVITER_IDS = {
+        302050872383242240: "Disboard",  # DISBOARD bot
+    }
     try:
-        async for entry in member.guild.audit_logs(
-            limit=10, action=discord.AuditLogAction.invite_create
-        ):
-            pass  # just warm up the cache
-
-        # Compare invite uses before and after
         invites_after = await member.guild.invites()
         cached = getattr(bot, "_invite_cache", {}).get(member.guild.id, [])
-        matched = False
+        cached_uses = {inv.code: inv.uses for inv in cached}
         for invite in invites_after:
-            for cached_invite in cached:
-                if (
-                    invite.code == cached_invite.code
-                    and invite.uses > cached_invite.uses
-                ):
-                    if invite.code == _DISCADIA_INVITE_CODE:
-                        inviter = "Discadia"
-                    else:
-                        inviter = invite.inviter.mention if invite.inviter else "Unknown"
-                    matched = True
-                    break
-            if matched:
-                break
-
-        # If no invite matched, check if the Discadia invite use count went up
-        # by comparing directly (Discadia link may not appear in guild.invites())
-        if not matched:
-            for invite in invites_after:
+            # uses went up vs the cached snapshot (new invites default to 0)
+            if invite.uses > cached_uses.get(invite.code, 0):
                 if invite.code == _DISCADIA_INVITE_CODE:
-                    for cached_invite in cached:
-                        if cached_invite.code == _DISCADIA_INVITE_CODE:
-                            if invite.uses > cached_invite.uses:
-                                inviter = "Discadia"
-                    break
-        # If still unknown — likely came from an external listing (Discadia)
-        if inviter == "Unknown":
-            inviter = "Discadia (or unknown link)"
+                    inviter = "Discadia"
+                elif invite.inviter and invite.inviter.id in _KNOWN_INVITER_IDS:
+                    inviter = _KNOWN_INVITER_IDS[invite.inviter.id]
+                else:
+                    inviter = invite.inviter.mention if invite.inviter else "Unknown"
+                break
     except Exception:
         pass
+
+    # Discadia (and other listing sites) use a vanity redirect that often does
+    # NOT show up in guild.invites(), so the diff above can't match it. If we
+    # still don't know the inviter, attribute it to Discadia — it's the only
+    # external listing the server is on. Kept outside the try so a failed
+    # guild.invites() call (permissions/transient) still falls back cleanly.
+    if inviter == "Unknown":
+        inviter = "Discadia"
 
     # Update invite cache
     try:
@@ -2330,9 +2541,58 @@ async def on_member_join(member: discord.Member):
 
     await channel.send(embed=embed)
 
+    # Warm welcome + verification nudge in #intro. The ping is auto-removed
+    # once the member posts their introduction (see on_message intro block).
+    intro_channel = discord.utils.get(member.guild.text_channels, name="intro")
+    if intro_channel:
+        try:
+            yay = _named_emoji(member.guild, WELCOME_EMOJI_NAME)
+            lead = f"{yay} " if yay else ""
+            trail = f" {yay}" if yay else ""
+            welcome_msg = await intro_channel.send(
+                f"{lead}Welcome to **{member.guild.name}**, {member.mention}!{trail}\n\n"
+                "We're really happy to have you here! Please read the "
+                "instructions **below** and drop a quick introduction so the "
+                "mods can verify you and unlock the full server.\n\n"
+                "Can't wait to get to know you! 👇"
+            )
+            _welcome_messages[member.id] = welcome_msg.id
+            # Re-post the sticky instructions so they sit right below the ping.
+            await _repost_sticky_intro(intro_channel)
+        except Exception:
+            pass
+
 
 @bot.event
 async def on_member_remove(member: discord.Member):
+    # If they left before ever introducing themselves, clean up the bot's
+    # welcome ping in #intro so it doesn't linger forever.
+    intro_channel = discord.utils.get(member.guild.text_channels, name="intro")
+    if intro_channel:
+        welcome_id = _welcome_messages.pop(member.id, None)
+        removed = False
+        if welcome_id:
+            try:
+                wm = await intro_channel.fetch_message(welcome_id)
+                await wm.delete()
+                removed = True
+            except Exception:
+                pass
+        if not removed:
+            # Fallback (e.g. after a restart): find the bot's welcome ping
+            # that mentions this user and delete it.
+            try:
+                async for old in intro_channel.history(limit=50):
+                    if (
+                        old.author == bot.user
+                        and old.id != sticky_message_id
+                        and member in old.mentions
+                    ):
+                        await old.delete()
+                        break
+            except Exception:
+                pass
+
     # Warn in #logs if a Verified member left
     verified_role = discord.utils.get(member.guild.roles, name="✔️Verified")
     if verified_role and verified_role in member.roles:
@@ -2367,7 +2627,11 @@ async def on_member_remove(member: discord.Member):
         if member.joined_at
         else "Unknown"
     )
-    roles = [r.mention for r in member.roles if r.name in ("✔️Verified", "Unverified")]
+    # Only surface the Verified / Unverified role. Match on a case-insensitive
+    # substring so emoji prefixes or spacing ("✔️Verified", "✅ Verified",
+    # "Unverified") don't break detection. "unverified" also contains
+    # "verified", so this single check covers both.
+    roles = [r.mention for r in member.roles if "verified" in r.name.lower()]
     member_count = member.guild.member_count
 
     embed = discord.Embed(
@@ -2384,7 +2648,6 @@ async def on_member_remove(member: discord.Member):
     embed.timestamp = discord.utils.utcnow()
 
     await channel.send(embed=embed)
-
 
 
 # ==================== BOT READY ====================
@@ -2479,7 +2742,7 @@ async def on_ready():
     bot.add_view(ColorRoleView3())
     bot.add_view(NotificationView())
     bot.add_view(HobbyRoleView())
-    bot.add_view(CityRoleView())
+    bot.add_view(CityRoleView(guild))
     print("✅ Registered all color role buttons (37 colors)")
     print("✅ Registered notification buttons")
     print("✅ Registered city role buttons")
@@ -2494,31 +2757,24 @@ async def on_ready():
                     print("✅ Found sticky intro message")
                     break
         if not sticky_message_id:
-            embed = discord.Embed(
-                title="👋 Welcome to Quetta Tea Corner!",
-                description=(
-                    "Before you can access the server, please introduce yourself here!\n\n"
-                    "**Tell us about:**\n• Name/nickname:\n• Age:\n• Gender:\n"
-                    "• Country/city:\n• Interests/hobbies:\n\n"
-                    "Once a moderator reviews your intro, you'll get the Verified role "
-                    "and full access to the server! ☕"
-                ),
-                color=discord.Color.from_rgb(139, 69, 19),
-            )
-            embed.set_footer(text="Be genuine and friendly! We're excited to meet you.")
-            sticky_msg = await intro_channel.send(embed=embed)
+            sticky_msg = await intro_channel.send(embed=_build_sticky_intro_embed())
             sticky_message_id = sticky_msg.id
             print("✅ Created sticky intro message")
 
-    # Sync slash commands with Discord
+    # Sync slash commands with Discord.
+    # Register everything per-GUILD only (instant updates). Previously we synced
+    # globally AND to the guild, which made every command show up TWICE. We now
+    # also push an empty global set once to clear those leftover global copies.
     try:
-        synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} slash commands")
-        # Also sync to guild for instant update
         guild = discord.Object(id=bot.guilds[0].id)
         bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
-        print("✅ Guild sync complete")
+        synced = await bot.tree.sync(guild=guild)
+        print(f"✅ Synced {len(synced)} guild slash commands")
+
+        # Clear any global registrations from older deploys (the duplicates)
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
+        print("✅ Cleared duplicate global commands")
     except Exception:
         logger.exception("command sync failed")
 
