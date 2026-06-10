@@ -2264,6 +2264,7 @@ async def on_member_join(member: discord.Member):
 
     # Try to find who invited this member via audit log
     inviter = "Unknown"
+    _DISCADIA_INVITE_CODE = "KvKhG2t47S"
     try:
         async for entry in member.guild.audit_logs(
             limit=10, action=discord.AuditLogAction.invite_create
@@ -2279,7 +2280,10 @@ async def on_member_join(member: discord.Member):
                     invite.code == cached_invite.code
                     and invite.uses > cached_invite.uses
                 ):
-                    inviter = invite.inviter.mention if invite.inviter else "Unknown"
+                    if invite.code == _DISCADIA_INVITE_CODE:
+                        inviter = "Discadia"
+                    else:
+                        inviter = invite.inviter.mention if invite.inviter else "Unknown"
                     break
     except Exception:
         pass
@@ -2345,7 +2349,7 @@ async def on_member_remove(member: discord.Member):
         if member.joined_at
         else "Unknown"
     )
-    roles = [r.mention for r in member.roles if r.name != "@everyone"]
+    roles = [r.mention for r in member.roles if r.name in ("✔️Verified", "Unverified")]
     member_count = member.guild.member_count
 
     embed = discord.Embed(
